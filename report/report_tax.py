@@ -78,7 +78,16 @@ class ReportTax(models.AbstractModel):
     def _compute_tax_balance(self, tax_ids, data, out_refund = False):
         company_id = self.env.user.company_id.id
         res = {}
-        
+        _logger.info('tax_ids')
+        _logger.info(tax_ids)
+        tax_model = self.env['account.tax']
+        type_use = 'sale'
+        for tax_id in tax_ids:
+            consulta = tax_model.search([('id', '=', tax_id)])
+            type_use = consulta.type_tax_use
+            _logger.info(type_use)
+
+
         #get the base amount for taxes
         base_amt_val = self._compute_base_amount_bal(tax_ids, data, company_id, out_refund)
         
@@ -139,6 +148,7 @@ class ReportTax(models.AbstractModel):
             #_logger.info(base_amt)
 
             for r in result:
+                _logger.info(r['tax_id'])
                 if r['tax_id'] == base_amt['tax_id']:
                     if r['tax_id'] not in res:
                         res[r['tax_id']] =  {'id': r['tax_id'], 'tax_amount': r['tax_amount'], 'base_amount':base_amt['base_amount']}
@@ -385,7 +395,7 @@ class ReportTax(models.AbstractModel):
         
 
         report_lines = self.get_tax_lines(data.get('form'), True)
-        report_lines_devoluciones = self.get_tax_lines(data.get('form'), False)
+        #report_lines_devoluciones = self.get_tax_lines(data.get('form'), False)
 
         
         docargs = {
@@ -395,6 +405,10 @@ class ReportTax(models.AbstractModel):
             'docs': docs,
             'time': time,
             'get_tax_lines': report_lines,
-            'get_tax_lines_devoluciones': report_lines_devoluciones,
         }
         return self.env['report'].render('account_tax_report.report_tax_view', docargs)
+
+
+
+
+
