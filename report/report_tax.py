@@ -178,6 +178,10 @@ class ReportTax(models.AbstractModel):
         
         #get the base amount for taxes
         #base_amt_val = self._compute_base_amount_bal(tax_ids, data, company_id)
+
+        condition = "AND move.id in( select move_id from account_invoice where type = 'out_refund'  and move_id is not null )"
+        if not out_refund:
+            condition = "AND move.id in( select move_id from account_invoice where type <> 'out_refund'  and move_id is not null )"
         
         start_date = data['date_from']
         end_date = data['date_to']
@@ -192,12 +196,6 @@ class ReportTax(models.AbstractModel):
 
             #_logger.info("El out_refund")
             #_logger.info( out_refund )
-
-           
-            condition = "AND move.id in( select move_id from account_invoice where type = 'out_refund'  and move_id is not null )"
-            if not out_refund:
-                condition = "AND move.id in( select move_id from account_invoice where type <> 'out_refund'  and move_id is not null )"
-
 
             self._cr.execute("""SELECT  \
                 SUM(""" + ( 'line.credit' if not out_refund else 'line.debit * -1' ) + """) AS tax_amount ,\
@@ -279,18 +277,43 @@ class ReportTax(models.AbstractModel):
             _logger.info( report.show_refound )
 
             if report.id in res:
+                _logger.info("Continue")
                 continue
             res[report.id] = dict((fn, 0.0) for fn in fields)
+
+            report_id = str(report.id)
+
+            _logger.info("reportid")
+            _logger.info(report_id)
             
             if report.type == 'taxes':
                 # it's the sum of the linked taxes
                 if report.tax_ids:
 
                     res[report.id]['tax'] = self._compute_tax_balance(report.tax_ids.ids, data, out_refund)
+
+                    _logger.info("=========res============")
+                    _logger.info(res)
+                    _logger.info(data)
+
+                    
+
                     if data['display_detail']:
                         for tax in report.tax_ids.ids:
-                            res_detail[tax] = dict((fn, 0.0) for fn in add_fields)
-                            res_detail[tax]['move'] = self._compute_tax_balance_detail([tax], data, out_refund)
+                            _logger.info("Entra 01")
+                            _logger.info( report_id )
+
+                            res_detail[ report_id ] = {}
+
+                            res_detail[report_id][tax] = dict((fn, 0.0) for fn in add_fields)
+                            _logger.info("Entra 02")
+                            res_detail[report_id][tax]['move'] = self._compute_tax_balance_detail([tax], data, out_refund)
+                            _logger.info("Entra 03")
+
+                            _logger.info("=========res_detail============")
+                            _logger.info(res_detail)
+
+
                     for value in res[report.id]['tax'].values():
                         for field in fields:
                             res[report.id][field] += value.get(field)
@@ -300,20 +323,22 @@ class ReportTax(models.AbstractModel):
                 if taxes.ids:
                     res[report.id]['tax'] = self._compute_tax_balance(taxes.ids, data, out_refund)
                     for tax in taxes.ids:
-                        res_detail[tax] = dict((fn, 0.0) for fn in add_fields)
-                        res_detail[tax]['move'] = self._compute_tax_balance_detail([tax], data, out_refund)
+                        res_detail[report_id][tax] = dict((fn, 0.0) for fn in add_fields)
+                        res_detail[report_id][tax]['move'] = self._compute_tax_balance_detail([tax], data, out_refund)
                     for value in res[report.id]['tax'].values():
                         for field in fields:
                             res[report.id][field] += value.get(field)
                             
             elif report.type == 'tax_report' and report.tax_report_id:
                 # it's the amount of the linked report
+                #_logger.info("test01")
                 res2,res_detail = self._compute_report_balance(report.tax_report_id, data, out_refund)
                 for key, value in res2.items():
                     for field in fields:
                         res[report.id][field] += value[field]
             elif report.type == 'sum':
                 # it's the sum of the children of this taxes.report
+                #_logger.info("test02")
                 res2,res_detail = self._compute_report_balance(report.children_ids, data, out_refund)
                 for key, value in res2.items():
                     for field in fields:
@@ -322,6 +347,9 @@ class ReportTax(models.AbstractModel):
             _logger.info( "res" )            
             _logger.info( res )            
             _logger.info( res_detail )   
+            _logger.info("=========================================================")
+
+
 
 
 
@@ -332,13 +360,28 @@ class ReportTax(models.AbstractModel):
         tax_report = self.env['taxes.report'].search([('id', '=', data['tax_report_id'][0])])
         #_logger.info("tax_report")
         #_logger.info(tax_report)
+        company_id = self.env.user.company_id.id
 
         child_reports = tax_report._get_children_by_order()
-        #_logger.info("child_reports")
-        #_logger.info(child_reports)
+        _logger.info("child_reports")
+        _logger.info(child_reports)
 
-        company_id = self.env.user.company_id.id
+        """for report1 in child_reports:
+            _logger.info("report1")
+            _logger.info( report1 )
+            (res2, res_detail2) = self.with_context(data.get('used_context'))._compute_report_balance(child_reports, data, out_refund)
+
+            _logger.info("res_detail2")
+            _logger.info( res_detail2 )
+
+
+        return False"""
+
         (res, res_detail) = self.with_context(data.get('used_context'))._compute_report_balance(child_reports, data, out_refund)
+
+        _logger.info("============_compute_report_balance================")
+        _logger.info( res )
+        _logger.info( res_detail )
         
         for report in child_reports:
             #_logger.info( "report" )
@@ -388,7 +431,11 @@ class ReportTax(models.AbstractModel):
                     #_logger.info(vals)      
 
                     if data['display_detail']:
-                        for tax1 in res_detail[tax.id]['move']: 
+                        _logger.info("Imprimiendo")
+                        _logger.info(report.id)
+                        _logger.info(tax.id)
+
+                        for tax1 in res_detail[ str(report.id )][tax.id]['move']: 
                             move = self.env['account.move.line'].browse(tax1['id'])
                             account = self.env['account.account'].browse(tax1['account_id'])
                             partner = self.env['res.partner'].browse(tax1['partner_id'])
@@ -423,6 +470,8 @@ class ReportTax(models.AbstractModel):
         report_lines = self.get_tax_lines(data.get('form'), True)
         #report_lines_devoluciones = self.get_tax_lines(data.get('form'), False)
 
+        _logger.info("report lines")
+        _logger.info(report_lines)
         
         docargs = {
             'doc_ids': self.ids,
