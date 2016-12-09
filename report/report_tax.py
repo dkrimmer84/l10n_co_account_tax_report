@@ -195,6 +195,8 @@ class ReportTax(models.AbstractModel):
         
         #get the base amount for taxes
         #base_amt_val = self._compute_base_amount_bal(tax_ids, data, company_id)
+        #_logger.info("=========")
+        #_logger.info(base_amt_val)
 
         condition = "AND move.id in( select move_id from account_invoice where type in ('out_refund', 'in_refund')  and move_id is not null )"
         if not out_refund:
@@ -212,13 +214,13 @@ class ReportTax(models.AbstractModel):
 
         if start_date and end_date:
 
-            #_logger.info("La sql")
-
             #_logger.info("El out_refund")
             #_logger.info( out_refund )
 
             self._cr.execute("""SELECT  \
                 SUM(""" + _sum_condition + """) AS tax_amount ,\
+                (select amount_untaxed from account_invoice where id = line.invoice_id) as base_amount,
+                move.id as move_id,
                 line.id as id ,\
                 line.partner_id as partner_id ,\
                 line.account_id as account_id ,\
@@ -238,7 +240,7 @@ class ReportTax(models.AbstractModel):
                 """+ condition + """
 
             GROUP BY \
-                line.id, line.tax_line_id\
+                line.id, line.tax_line_id, move.id\
             """, (tuple(tax_ids),
                 company_id, start_date, end_date, state))
              
@@ -272,8 +274,8 @@ class ReportTax(models.AbstractModel):
         result = self._cr.dictfetchall()
          
 
-        #_logger.info("El result")
-        #_logger.info(result)
+        _logger.info("==============")
+        _logger.info(result)
 
         return result
 
@@ -327,6 +329,9 @@ class ReportTax(models.AbstractModel):
                             res_detail[report_id][tax] = dict((fn, 0.0) for fn in add_fields)
                             #_logger.info("Entra 02")
                             res_detail[report_id][tax]['move'] = self._compute_tax_balance_detail([tax], data, out_refund)
+
+                            
+
                             #_logger.info("Entra 03")
 
                             #_logger.info("=========res_detail============")
@@ -452,13 +457,16 @@ class ReportTax(models.AbstractModel):
                     if data['display_detail']:
 
                         for tax1 in res_detail[ str(report.id )][tax.id]['move']: 
+                            _logger.info("tax1")
+                            _logger.info(tax1)
+
                             move = self.env['account.move.line'].browse(tax1['id'])
                             account = self.env['account.account'].browse(tax1['account_id'])
                             partner = self.env['res.partner'].browse(tax1['partner_id'])
                             vals = {
                              'name': move.move_id.name,
                              'tax_amount': tax1['tax_amount'] * report.sign or 0.0,
-                             'base_amount': base_amount_show1,
+                             'base_amount': tax1['base_amount'],
                              'type': 'taxes',
                              'level': report.display_detail == 'detail_with_hierarchy' and 5,
                              'tax_type': tax.type_tax_use,
