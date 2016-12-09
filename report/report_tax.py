@@ -274,8 +274,8 @@ class ReportTax(models.AbstractModel):
         result = self._cr.dictfetchall()
          
 
-        _logger.info("==============")
-        _logger.info(result)
+        #_logger.info("==============")
+        #_logger.info(result)
 
         return result
 
@@ -295,8 +295,8 @@ class ReportTax(models.AbstractModel):
             #if _out_refund:
             out_refund = report.show_refound
 
-            _logger.info( report.name )
-            _logger.info( report.show_refound )
+            #_logger.info( report.name )
+            #_logger.info( report.show_refound )
 
             if report.id in res:
                 continue
@@ -424,7 +424,11 @@ class ReportTax(models.AbstractModel):
                 'sign': report.sign,
             }
             #_logger.info("Los vals 1")        
-            #_logger.info(vals)      
+            #_logger.info(vals)   
+
+            _logger.info("==============")
+            _logger.info( report.name )   
+            _logger.info( base_amount_show )   
 
             lines.append(vals)
             if report.display_detail == 'no_detail':
@@ -457,8 +461,8 @@ class ReportTax(models.AbstractModel):
                     if data['display_detail']:
 
                         for tax1 in res_detail[ str(report.id )][tax.id]['move']: 
-                            _logger.info("tax1")
-                            _logger.info(tax1)
+                            #_logger.info("tax1")
+                            #_logger.info(tax1)
 
                             move = self.env['account.move.line'].browse(tax1['id'])
                             account = self.env['account.account'].browse(tax1['account_id'])
@@ -466,7 +470,7 @@ class ReportTax(models.AbstractModel):
                             vals = {
                              'name': move.move_id.name,
                              'tax_amount': tax1['tax_amount'] * report.sign or 0.0,
-                             'base_amount': tax1['base_amount'],
+                             'base_amount': tax1['base_amount']  * report.sign or 0.0,
                              'type': 'taxes',
                              'level': report.display_detail == 'detail_with_hierarchy' and 5,
                              'tax_type': tax.type_tax_use,

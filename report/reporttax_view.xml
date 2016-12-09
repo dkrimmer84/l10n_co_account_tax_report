@@ -47,8 +47,8 @@
                                             <span style="color: white;" t-esc="'..' * a.get('level', 0)"/>
                                             <span t-att-style="style" t-esc="a.get('name')"/>
                                         </td>
-                                        <td class="text-right"><span t-att-style="style" t-esc="a.get('tax_amount')*a.get('sign')" t-esc-options='{"widget": "monetary", "display_currency": "res_company.currency_id"}'/></td>
-                                        <td class="text-right" t-if="not a.get('detail')"><t t-if="a.get('base_amount')"><span t-att-style="style" t-esc="a.get('base_amount')*a.get('sign')" t-esc-options='{"widget": "monetary", "display_currency": "res_company.currency_id"}'/></t></td>
+                                        <td class="text-right"><span t-att-style="style" t-esc="a.get('tax_amount')" t-esc-options='{"widget": "monetary", "display_currency": "res_company.currency_id"}'/></td>
+                                        <td class="text-right" t-if="not a.get('detail')"><t t-if="a.get('base_amount')"><span t-att-style="style" t-esc="a.get('base_amount')" t-esc-options='{"widget": "monetary", "display_currency": "res_company.currency_id"}'/></t></td>
                                         <td class="text-right" t-if="a.get('detail')"><span t-att-style="style" t-esc="a.get('notes')"/></td>
                                         <td class="text-right"><span t-att-style="style" t-esc="a.get('partnername')"/></td>
                                         <!--<td class="text-right"><span t-att-style="style" t-esc="a.get('account')"/></td>-->
