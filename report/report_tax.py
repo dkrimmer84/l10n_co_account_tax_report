@@ -532,7 +532,7 @@ class ReportTax(models.AbstractModel):
             'time': time,
             'get_tax_lines': report_lines,
         }
-        return self.env['report'].render('account_tax_report.report_tax_view', docargs)
+        return self.env['report'].render('l10n_co_account_tax_report.inherit_report_tax_view', docargs)
 
 
 

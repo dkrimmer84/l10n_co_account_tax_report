@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <template id="report_tax_view">
+    <template id="inherit_report_tax_view">
         <t t-call="report.html_container">
             <t t-foreach="docs" t-as="o">
                 <t t-call="report.internal_layout">
@@ -9,16 +9,16 @@
                         
                         <div class="row mt32 mb32">
                             <div class="col-xs-4">
-                                <strong>Target Moves:</strong>
+                                <strong>Informe:</strong>
                                 <p>
-                                    <span t-if="data['target_move'] == 'all'">All Entries</span>
-                                    <span t-if="data['target_move'] == 'posted'">All Posted Entries</span>
+                                    <span t-if="data['target_move'] == 'all'">Todas las entradas</span>
+                                    <span t-if="data['target_move'] == 'posted'">Todas las entradas publicadas</span>
                                 </p>
                             </div>
                             <div class="col-xs-4">
                                 <p>
-                                    <t t-if="data['date_from']"><strong>Date Fom :</strong> <span t-esc="data['date_from']"/><br/></t>
-                                    <t t-if="data['date_to']"><strong>Date To:</strong> <span t-esc="data['date_to']"/></t>
+                                    <t t-if="data['date_from']"><strong>Fecha desde :</strong> <span t-esc="data['date_from']"/><br/></t>
+                                    <t t-if="data['date_to']"><strong>Fecha hasta:</strong> <span t-esc="data['date_to']"/></t>
                                 </p>
                             </div>
                         </div>
@@ -26,13 +26,13 @@
                         <table class="table table-condensed">
                             <thead>
                                 <tr>
-                                    <th>Tax Name</th>
-                                    <th class="text-right">Tax Amount</th> 
-                                    <th class="text-right">Base Amount</th>
+                                    <th>Impuesto</th>
+                                    <th class="text-right">Total Impuesto</th> 
+                                    <th class="text-right">Total Base</th>
                                     <!--<th class="text-right">Account Name</th>-->
                                     <t t-if="data['display_detail']">
-                                        <th class="text-right">Partner Name</th>
-                                        <th class="text-right">Journal Date</th>
+                                        <th class="text-right">Tercero</th>
+                                        <th class="text-right">Fecha</th>
                                         <th class="text-right">Ref</th>
                                     </t>
                                 </tr>
@@ -48,7 +48,8 @@
                                             <span t-att-style="style" t-esc="a.get('name')"/>
                                         </td>
                                         <td class="text-right"><span t-att-style="style" t-esc="a.get('tax_amount')" t-esc-options='{"widget": "monetary", "display_currency": "res_company.currency_id"}'/></td>
-                                        <td class="text-right" t-if="not a.get('detail')"><t t-if="a.get('base_amount')"><span t-att-style="style" t-esc="a.get('base_amount')" t-esc-options='{"widget": "monetary", "display_currency": "res_company.currency_id"}'/></t></td>
+                                        <td class="text-right"><t t-if="a.get('base_amount')"><span t-att-style="style" t-esc="a.get('base_amount')" t-esc-options='{"widget": "monetary", "display_currency": "res_company.currency_id"}'/></t></td>
+
                                         <td class="text-right" t-if="a.get('detail')"><span t-att-style="style" t-esc="a.get('notes')"/></td>
                                         <td class="text-right"><span t-att-style="style" t-esc="a.get('partnername')"/></td>
                                         <!--<td class="text-right"><span t-att-style="style" t-esc="a.get('account')"/></td>-->
@@ -58,45 +59,6 @@
                                 </tr>
                             </tbody>
                         </table>
-
-
-
-                        <!--<table class="table table-condensed">
-                            <thead>
-                                <tr>
-                                    <th>Tax Name</th>
-                                    <th class="text-right">Tax Amount</th> 
-                                    <th class="text-right">Base Amount</th>
-                                    
-                                    <t t-if="data['display_detail']">
-                                        <th class="text-right">Partner Name</th>
-                                        <th class="text-right">Journal Date</th>
-                                        <th class="text-right">Ref</th>
-                                    </t>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr t-foreach="get_tax_lines_devoluciones" t-as="a">
-                                    <t t-if="a['level'] != 0">
-                                        <t t-if="a.get('level') &gt; 3"><t t-set="style" t-value="'font-weight: normal;'"/></t>
-                                        <t t-if="not a.get('level') &gt; 3"><t t-set="style" t-value="'font-weight: bold;'"/></t>
-    
-                                        <td>
-                                            <span style="color: white;" t-esc="'..' * a.get('level', 0)"/>
-                                            <span t-att-style="style" t-esc="a.get('name')"/>
-                                        </td>
-                                        <td class="text-right"><span t-att-style="style" t-esc="a.get('tax_amount')*a.get('sign')" t-esc-options='{"widget": "monetary", "display_currency": "res_company.currency_id"}'/></td>
-                                        <td class="text-right" t-if="not a.get('detail')"><t t-if="a.get('base_amount')"><span t-att-style="style" t-esc="a.get('base_amount')*a.get('sign')" t-esc-options='{"widget": "monetary", "display_currency": "res_company.currency_id"}'/></t></td>
-                                        <td class="text-right" t-if="a.get('detail')"><span t-att-style="style" t-esc="a.get('notes')"/></td>
-                                        <td class="text-right"><span t-att-style="style" t-esc="a.get('partnername')"/></td>
-                                        
-                                        <td class="text-right"><span t-att-style="style" t-esc="a.get('date')"/></td>
-                                        <td class="text-right"><span t-att-style="style" t-esc="a.get('ref')"/></td>
-                                    </t>
-                                </tr>
-                            </tbody>
-                        </table>-->
-                        
                     </div>
                 </t>
             </t>

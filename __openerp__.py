@@ -12,7 +12,7 @@
     """,
     'website': '',
     'depends' : ['account', 'account_tax_report'],
-    'data': ['views/tax_report_view.xml'],
+    'data': ['report/reporttax_view.xml'],
     'installable': True,
 }
 
