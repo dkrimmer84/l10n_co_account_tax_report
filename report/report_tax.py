@@ -15,7 +15,7 @@ class ReportTax(models.AbstractModel):
 
 
     #get the base amount as per tax from account move line
-    def _compute_base_amount_bal(self, tax_ids, data, company_id, out_refund = False):
+    def _compute_base_amount_bal(self, tax_ids, data, company_id, out_refund = False, report_sign = False):
         res = {}
 
         #_logger.info('tax_ids 2')
@@ -25,17 +25,20 @@ class ReportTax(models.AbstractModel):
         end_date = data['date_to']
         status = data['target_move']
         if status == 'all':
-            state = ('draft', 'posted', )
+            state = ('draft', 'posted', 'paid')
         else:
             state = ('posted', )
 
         _sum_condition = self.sum_condition( tax_ids, out_refund, 'total' )
+        """if report_sign == 'sum':
+            _logger.info("Entra01====")
+            _sum_condition = 'move_line.credit - move_line.debit'"""
 
 
         if start_date and end_date:
            
             self._cr.execute("""select \
-                        SUM(""" + _sum_condition + """) as base_amount,\
+                        SUM(""" + _sum_condition + """) * """+ str(report_sign) +""" as base_amount,\
                         move_rel.account_tax_id as tax_id\
                     from \
                         account_move as move \
@@ -57,7 +60,7 @@ class ReportTax(models.AbstractModel):
                         """, ( start_date, end_date, tuple(tax_ids), company_id, state))
         else:
             self._cr.execute("""select \
-                        SUM(""" + sum_condition + """) as base_amount ,\
+                        SUM(""" + sum_condition + """)   * """+ str(report_sign) +""" as base_amount ,\
                         move_rel.account_tax_id as tax_id\
                     from \
                         account_move as move \
@@ -104,25 +107,28 @@ class ReportTax(models.AbstractModel):
 
         return sum_condition 
     #get the tax amount as per tax from account move line
-    def _compute_tax_balance(self, tax_ids, data, out_refund = False):
+    def _compute_tax_balance(self, tax_ids, data, out_refund = False, report_sign = False):
         company_id = self.env.user.company_id.id
         res = {}
         
 
         #get the base amount for taxes
-        base_amt_val = self._compute_base_amount_bal(tax_ids, data, company_id, out_refund)
+        base_amt_val = self._compute_base_amount_bal(tax_ids, data, company_id, out_refund, report_sign)
         
         start_date = data['date_from']
         end_date = data['date_to']
         status = data['target_move']
         if status == 'all':
-            state = ('draft', 'posted', )
+            state = ('draft', 'posted', 'paid')
         else:
             state = ('posted', )
 
         
         
         _sum_condition = self.sum_condition( tax_ids, out_refund )
+        """if report_sign == 'sum':
+            _logger.info("Entra02====")
+            _sum_condition = 'move_line.credit - move_line.debit'"""
         #_logger.info("==============")
         #_logger.info(_type_tax_use)  
         #_logger.info( tax_ids )
@@ -134,7 +140,7 @@ class ReportTax(models.AbstractModel):
         if start_date and end_date:
            
             self._cr.execute( """SELECT  \
-                SUM(""" + _sum_condition + """) AS tax_amount ,\
+                SUM(""" + _sum_condition + """)  * """+ str(report_sign) +""" AS tax_amount ,\
                 line.tax_line_id as tax_id\
             FROM account_move_line AS line, \
                 account_move AS move \
@@ -152,7 +158,7 @@ class ReportTax(models.AbstractModel):
             
         else:
             self._cr.execute("""SELECT  \
-                SUM(""" + _sum_condition + """) AS tax_amount ,\
+                SUM(""" + _sum_condition + """)   * """+ str(report_sign) +""" AS tax_amount ,\
                 line.tax_line_id as tax_id\
             FROM account_move_line AS line, \
                 account_move AS move \
@@ -186,7 +192,7 @@ class ReportTax(models.AbstractModel):
 
 
     #get the tax amount as per tax from account move line
-    def _compute_tax_balance_detail(self, tax_ids, data, out_refund = False):
+    def _compute_tax_balance_detail(self, tax_ids, data, out_refund = False, report_sign = False):
         #_logger.info('tax_ids 3')
         #_logger.info(tax_ids)
 
@@ -206,7 +212,7 @@ class ReportTax(models.AbstractModel):
         end_date = data['date_to']
         status = data['target_move']
         if status == 'all':
-            state = ('draft', 'posted', )
+            state = ('draft', 'posted', 'paid' )
         else:
             state = ('posted', )
 
@@ -214,12 +220,17 @@ class ReportTax(models.AbstractModel):
 
         if start_date and end_date:
 
-            #_logger.info("El out_refund")
-            #_logger.info( out_refund )
+            """_logger.info("El out_refund")
+            _logger.info( tax_ids )
+            _logger.info( out_refund )
+            _logger.info("state")
+            _logger.info(state)"""
+
+            
 
             self._cr.execute("""SELECT  \
-                SUM(""" + _sum_condition + """) AS tax_amount ,\
-                (select amount_untaxed from account_invoice where id = line.invoice_id) as base_amount,
+                SUM(""" + _sum_condition + """)   * """+ str(report_sign) +""" AS tax_amount ,\
+                (select amount_untaxed from account_invoice where id = line.invoice_id) * """+ str(report_sign) +""" as base_amount,
                 move.id as move_id,
                 line.id as id ,\
                 line.partner_id as partner_id ,\
@@ -250,7 +261,9 @@ class ReportTax(models.AbstractModel):
 
 
             self._cr.execute("""SELECT  \
-                SUM(""" + _sum_condition + """) AS tax_amount ,\
+                SUM(""" + _sum_condition + """)   * """+ str(report_sign) +""" AS tax_amount ,\
+                (select amount_untaxed from account_invoice where id = line.invoice_id) * """+ str(report_sign) +""" as base_amount,
+                move.id as move_id,
                 line.id as id ,\
                 line.partner_id as partner_id ,\
                 line.name as name ,\
@@ -267,7 +280,7 @@ class ReportTax(models.AbstractModel):
                 AND move.state in %s \
                 """+ condition + """
             GROUP BY \
-                line.id, line.tax_line_id\
+                line.id, line.tax_line_id, move.id\
             """, (tuple(tax_ids),
                 company_id, state))
             
@@ -279,7 +292,7 @@ class ReportTax(models.AbstractModel):
 
         return result
 
-    def _compute_report_balance(self, reports, data, _out_refund = True):
+    def _compute_report_balance(self, reports, data, _out_refund = True, report_sign = False):
         '''returns a dictionary with key=the ID of a record and value=the base amount and balance amount
            computed for this record. If the record is of type :
                'taxes' : it's the sum of the linked taxes
@@ -295,8 +308,9 @@ class ReportTax(models.AbstractModel):
             #if _out_refund:
             out_refund = report.show_refound
 
-            #_logger.info( report.name )
+            _logger.info( report.name )
             #_logger.info( report.show_refound )
+            #_logger.info("=======")
 
             if report.id in res:
                 continue
@@ -311,7 +325,7 @@ class ReportTax(models.AbstractModel):
                 # it's the sum of the linked taxes
                 if report.tax_ids:
 
-                    res[report.id]['tax'] = self._compute_tax_balance(report.tax_ids.ids, data, out_refund)
+                    res[report.id]['tax'] = self._compute_tax_balance(report.tax_ids.ids, data, out_refund, report.sign)
 
                     #_logger.info("=========res============")
                     #_logger.info(res)
@@ -328,7 +342,7 @@ class ReportTax(models.AbstractModel):
 
                             res_detail[report_id][tax] = dict((fn, 0.0) for fn in add_fields)
                             #_logger.info("Entra 02")
-                            res_detail[report_id][tax]['move'] = self._compute_tax_balance_detail([tax], data, out_refund)
+                            res_detail[report_id][tax]['move'] = self._compute_tax_balance_detail([tax], data, out_refund, report.sign)
 
                             
 
@@ -345,10 +359,10 @@ class ReportTax(models.AbstractModel):
                 # it's the sum the leaf taxes with such an tax type
                 taxes = self.env['account.tax'].search([('tag_ids', 'in', report.tax_type_ids.ids), ('company_id', '=', company_id)])
                 if taxes.ids:
-                    res[report.id]['tax'] = self._compute_tax_balance(taxes.ids, data, out_refund)
+                    res[report.id]['tax'] = self._compute_tax_balance(taxes.ids, data, out_refund, report.sign)
                     for tax in taxes.ids:
                         res_detail[report_id][tax] = dict((fn, 0.0) for fn in add_fields)
-                        res_detail[report_id][tax]['move'] = self._compute_tax_balance_detail([tax], data, out_refund)
+                        res_detail[report_id][tax]['move'] = self._compute_tax_balance_detail([tax], data, out_refund, report.sign)
                     for value in res[report.id]['tax'].values():
                         for field in fields:
                             res[report.id][field] += value.get(field)
@@ -356,17 +370,20 @@ class ReportTax(models.AbstractModel):
             elif report.type == 'tax_report' and report.tax_report_id:
                 # it's the amount of the linked report
                 #_logger.info("test01")
-                res2,res_detail = self._compute_report_balance(report.tax_report_id, data, out_refund)
+                res2,res_detail = self._compute_report_balance(report.tax_report_id, data, out_refund, report.sign)
                 for key, value in res2.items():
                     for field in fields:
                         res[report.id][field] += value[field]
             elif report.type == 'sum':
                 # it's the sum of the children of this taxes.report
                 #_logger.info("test02")
-                res2,res_detail = self._compute_report_balance(report.children_ids, data, out_refund)
+                res2,res_detail = self._compute_report_balance(report.children_ids, data, out_refund, report.sign)
                 for key, value in res2.items():
+                    _logger.info("res2 ========")
+                    _logger.info(value)
                     for field in fields:
                         res[report.id][field] += value[field]
+
 
             #_logger.info( "res" )            
             #_logger.info( res )            
@@ -387,6 +404,9 @@ class ReportTax(models.AbstractModel):
         company_id = self.env.user.company_id.id
 
         child_reports = tax_report._get_children_by_order()
+
+        _logger.info("child_reports")
+        _logger.info(child_reports)
         #_logger.info("child_reports")
         #_logger.info(child_reports)
 
@@ -401,7 +421,7 @@ class ReportTax(models.AbstractModel):
 
         return False"""
 
-        (res, res_detail) = self.with_context(data.get('used_context'))._compute_report_balance(child_reports, data, out_refund)
+        (res, res_detail) = self.with_context(data.get('used_context'))._compute_report_balance(child_reports, data, out_refund, False)
 
         #_logger.info("============_compute_report_balance================")
         #_logger.info( res )
@@ -413,10 +433,10 @@ class ReportTax(models.AbstractModel):
             if report.skip_display_base_amount:
                 base_amount_show = 0.0
             else:
-                base_amount_show = res[report.id]['base_amount'] * report.sign
+                base_amount_show = res[report.id]['base_amount']
             vals = {
                 'name': report.name,
-                'tax_amount': res[report.id]['tax_amount'] * report.sign,
+                'tax_amount': res[report.id]['tax_amount'],
                 'type': 'report',
                 'base_amount': base_amount_show,
                 'level': bool(report.style_overwrite) and report.style_overwrite or report.level,
@@ -426,7 +446,7 @@ class ReportTax(models.AbstractModel):
             #_logger.info("Los vals 1")        
             #_logger.info(vals)   
 
-            _logger.info("==============")
+            _logger.info("==============2")
             _logger.info( report.name )   
             _logger.info( base_amount_show )   
 
@@ -442,11 +462,11 @@ class ReportTax(models.AbstractModel):
                     if report.skip_display_base_amount:
                         base_amount_show1 = False
                     else:
-                        base_amount_show1 = value['base_amount'] * report.sign or 0.0
+                        base_amount_show1 = value['base_amount']
                     tax = self.env['account.tax'].browse(tax_id)
                     vals = {
                      'name': tax.name,
-                     'tax_amount': value['tax_amount'] * report.sign or 0.0,
+                     'tax_amount': value['tax_amount'],
                      'base_amount': base_amount_show1,
                      'type': 'taxes',
                      'level': report.display_detail == 'detail_with_hierarchy' and 4,
@@ -460,6 +480,9 @@ class ReportTax(models.AbstractModel):
 
                     if data['display_detail']:
 
+                        if not str( report.id ) in res_detail:
+                            continue
+
                         for tax1 in res_detail[ str(report.id )][tax.id]['move']: 
                             #_logger.info("tax1")
                             #_logger.info(tax1)
@@ -469,8 +492,8 @@ class ReportTax(models.AbstractModel):
                             partner = self.env['res.partner'].browse(tax1['partner_id'])
                             vals = {
                              'name': move.move_id.name,
-                             'tax_amount': tax1['tax_amount'] * report.sign or 0.0,
-                             'base_amount': tax1['base_amount']  * report.sign or 0.0,
+                             'tax_amount': tax1['tax_amount'],
+                             'base_amount': tax1['base_amount'],
                              'type': 'taxes',
                              'level': report.display_detail == 'detail_with_hierarchy' and 5,
                              'tax_type': tax.type_tax_use,
