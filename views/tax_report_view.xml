@@ -10,7 +10,7 @@
             <field name="arch" type="xml">
                 <data>
                     <xpath expr="//field[@name='skip_display_base_amount']" position="after">
-                        <field name="show_refound" />
+                        <field name="show_refound" string="Is Refound" />
                     </xpath>
 
                 </data>

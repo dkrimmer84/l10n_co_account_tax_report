@@ -12,7 +12,8 @@
     """,
     'website': '',
     'depends' : ['account', 'account_tax_report'],
-    'data': ['report/reporttax_view.xml'],
+    'data': ['report/reporttax_view.xml',
+    'views/tax_report_view.xml'],
     'installable': True,
 }
 
