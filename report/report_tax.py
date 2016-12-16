@@ -30,7 +30,30 @@ class ReportTax(models.AbstractModel):
 
         
         if start_date and end_date:
-           
+            sql = """SELECT \
+                        SUM(""" + _sum_condition + """) * """+ str(report_sign) +""" as base_amount,\
+                        move_rel.account_tax_id as tax_id\
+                    from \
+                        account_move as move \
+                    LEFT JOIN \
+                        account_move_line move_line ON \
+                        (move_line.move_id = move.id) \
+                    LEFT JOIN \
+                        account_move_line_account_tax_rel move_rel ON \
+                        (move_rel.account_move_line_id = move_line.id) \
+                    where \
+                        move_line.date >= %s \
+                        AND move_line.date <= %s\
+                        AND move.id = move_line.move_id \
+                        AND move_rel.account_tax_id in %s \
+                        AND move_line.company_id = %s \
+                        AND move.state in %s \
+                    GROUP BY \
+                        move_rel.account_tax_id \
+                        """, ( start_date, end_date, tuple(tax_ids), company_id, state)
+            _logger.info('prueba sql')
+            _logger.info(sql)
+
             self._cr.execute("""select \
                         SUM(""" + _sum_condition + """) * """+ str(report_sign) +""" as base_amount,\
                         move_rel.account_tax_id as tax_id\
@@ -74,7 +97,7 @@ class ReportTax(models.AbstractModel):
                         """, (tuple(tax_ids), company_id, state))
         
         result = self._cr.dictfetchall()
-        _logger.info('------------------------- Base ---------------------')
+        _logger.info('---------------- base --------------------')
         _logger.info(result)
         return result
 
@@ -164,6 +187,8 @@ class ReportTax(models.AbstractModel):
                 company_id, state) )
 
         result = self._cr.dictfetchall()
+
+
         
         for base_amt in base_amt_val:
 
@@ -184,7 +209,7 @@ class ReportTax(models.AbstractModel):
 
         condition = "AND move.id in( select move_id from account_invoice where type in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type in ('out_refund', 'in_refund')   and account_move is not null )"
         if not out_refund:
-            condition = "AND move.id in( select move_id from account_invoice where type not in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type in ('out_refund', 'in_refund')   and account_move is not null )"
+            condition = "AND move.id in( select move_id from account_invoice where type not in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type not in ('out_refund', 'in_refund')   and account_move is not null )"
         
         start_date = data['date_from']
         end_date = data['date_to']
@@ -200,7 +225,9 @@ class ReportTax(models.AbstractModel):
 
             self._cr.execute("""SELECT  \
                 SUM(""" + _sum_condition + """)   * """+ str(report_sign) +""" AS tax_amount ,\
-                (select amount_untaxed from account_invoice where id = line.invoice_id) * """+ str(report_sign) +""" as base_amount,
+                (select ( ( case when (select amount_untaxed from account_invoice where id = line.invoice_id) is null then 0 else 
+                (select amount_untaxed from account_invoice where id = line.invoice_id) end ) + 
+                ( case when (SELECT sum( ol.price_unit * ol.qty) FROM pos_order_line as ol, pos_order as o WHERE o.id = ol.order_id and o.account_move = move.id) is null then 0 else (SELECT sum( ol.price_unit * ol.qty) FROM pos_order_line as ol, pos_order as o WHERE o.id = ol.order_id and o.account_move = move.id) end ))) * """+ str(report_sign) +""" as base_amount,
                 move.id as move_id,
                 line.id as id ,\
                 line.partner_id as partner_id ,\
@@ -229,7 +256,9 @@ class ReportTax(models.AbstractModel):
 
             self._cr.execute("""SELECT  \
                 SUM(""" + _sum_condition + """)   * """+ str(report_sign) +""" AS tax_amount ,\
-                (select amount_untaxed from account_invoice where id = line.invoice_id) * """+ str(report_sign) +""" as base_amount,
+                (select ( ( case when (select amount_untaxed from account_invoice where id = line.invoice_id) is null then 0 else 
+                (select amount_untaxed from account_invoice where id = line.invoice_id) end ) + 
+                ( case when (SELECT sum( ol.price_unit * ol.qty) FROM pos_order_line as ol, pos_order as o WHERE o.id = ol.order_id and o.account_move = move.id) is null then 0 else (SELECT sum( ol.price_unit * ol.qty) FROM pos_order_line as ol, pos_order as o WHERE o.id = ol.order_id and o.account_move = move.id) end ))) * """+ str(report_sign) +""" as base_amount,
                 move.id as move_id,
                 line.id as id ,\
                 line.partner_id as partner_id ,\
@@ -252,7 +281,6 @@ class ReportTax(models.AbstractModel):
                 company_id, state))
             
         result = self._cr.dictfetchall()
-
         return result
 
     def _compute_report_balance(self, reports, data, _out_refund = True, report_sign = False, _res = {}, _res_detail = {}):
@@ -346,9 +374,6 @@ class ReportTax(models.AbstractModel):
 
         (res, res_detail) = self.with_context(data.get('used_context'))._compute_report_balance(child_reports, data, out_refund, False)
 
-        _logger.info("=================")
-        _logger.info(res)
-        _logger.info(res_detail)
 
         for report in child_reports:
             
