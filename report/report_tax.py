@@ -182,9 +182,9 @@ class ReportTax(models.AbstractModel):
         company_id = self.env.user.company_id.id
         res = {}
 
-        condition = "AND move.id in( select move_id from account_invoice where type in ('out_refund', 'in_refund')  and move_id is not null )"
+        condition = "AND move.id in( select move_id from account_invoice where type in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type in ('out_refund', 'in_refund')   and account_move is not null )"
         if not out_refund:
-            condition = "AND move.id in( select move_id from account_invoice where type not in ('out_refund', 'in_refund')  and move_id is not null )"
+            condition = "AND move.id in( select move_id from account_invoice where type not in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type in ('out_refund', 'in_refund')   and account_move is not null )"
         
         start_date = data['date_from']
         end_date = data['date_to']
@@ -329,9 +329,6 @@ class ReportTax(models.AbstractModel):
                     for field in fields:
                         res[report.id][field] += value[field]
 
-        _logger.info('--------------------- Prueba ---------------------------------')
-        _logger.info(res)
-        _logger.info(res_detail)
         return res,res_detail
         
     def get_tax_lines(self, data, out_refund = False):
@@ -348,6 +345,11 @@ class ReportTax(models.AbstractModel):
         return False"""
 
         (res, res_detail) = self.with_context(data.get('used_context'))._compute_report_balance(child_reports, data, out_refund, False)
+
+        _logger.info("=================")
+        _logger.info(res)
+        _logger.info(res_detail)
+
         for report in child_reports:
             
             if report.skip_display_base_amount:
