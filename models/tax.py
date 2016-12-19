@@ -35,6 +35,6 @@ class TaxesReport(models.Model):
             if s[ 1 ] not in final_res:
                 final_res += s[ 1 ]
 
-        return final_res    
+        return final_res 
 
     

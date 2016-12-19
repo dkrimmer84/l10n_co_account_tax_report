@@ -51,8 +51,7 @@ class ReportTax(models.AbstractModel):
                     GROUP BY \
                         move_rel.account_tax_id \
                         """, ( start_date, end_date, tuple(tax_ids), company_id, state)
-            _logger.info('prueba sql')
-            _logger.info(sql)
+        
 
             self._cr.execute("""select \
                         SUM(""" + _sum_condition + """) * """+ str(report_sign) +""" as base_amount,\
@@ -97,8 +96,6 @@ class ReportTax(models.AbstractModel):
                         """, (tuple(tax_ids), company_id, state))
         
         result = self._cr.dictfetchall()
-        _logger.info('---------------- base --------------------')
-        _logger.info(result)
         return result
 
     def type_tax_use( self, tax_ids ):
@@ -196,7 +193,7 @@ class ReportTax(models.AbstractModel):
                 if r['tax_id'] == base_amt['tax_id']:
                     if r['tax_id'] not in res:
                         res[r['tax_id']] =  {'id': r['tax_id'], 'tax_amount': r['tax_amount'], 'base_amount':base_amt['base_amount']}
-               
+
         return res
 
 
@@ -296,9 +293,6 @@ class ReportTax(models.AbstractModel):
         add_fields = []
         company_id = self.env.user.company_id.id
         for report in reports:
-            _logger.info("=========")
-            _logger.info(report.name)
-            _logger.info(report.tax_ids.ids)
 
             #if _out_refund:
             out_refund = report.show_refound
