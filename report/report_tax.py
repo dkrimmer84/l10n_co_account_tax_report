@@ -222,15 +222,17 @@ class ReportTax(models.AbstractModel):
 
             self._cr.execute("""SELECT  \
                 SUM(""" + _sum_condition + """)   * """+ str(report_sign) +""" AS tax_amount ,\
-                (select ( ( case when (select amount_untaxed from account_invoice where id = line.invoice_id) is null 
-                then 0 else 
-                
-                (select amount_untaxed from account_invoice where id = line.invoice_id) end ) + 
-                ( case when (SELECT sum( ol.price_unit * ol.qty) FROM pos_order_line as ol, pos_order as o 
-                WHERE o.id = ol.order_id and o.account_move = move.id and o.id = line.order_id  and ol.order_id = 
-                line.order_id) is null then 0 else (SELECT sum( ol.price_unit * ol.qty) FROM pos_order_line as ol, 
-                pos_order as o WHERE o.id = ol.order_id and o.account_move = move.id and o.id = line.order_id  and 
-                ol.order_id = line.order_id) end ))) * """+ str(report_sign) +""" as base_amount,
+                (select ( ( 
+                    case when (select amount_untaxed from account_invoice where id = line.invoice_id) is null 
+                    then 0 
+                    else (select amount_untaxed from account_invoice where id = line.invoice_id) end ) +                                         
+
+                    (case when 
+                        (select amount_untaxed from account_invoice where id = line.invoice_id) is null                         
+                        then (SUM(""" + _sum_condition + """) * 100) / (select at.amount from account_tax at where at.id = line.tax_line_id )
+                        else 
+                        0 end ))) * """+ str(report_sign) +""" as base_amount,
+                         
                 line.order_id as orden,
                 move.id as move_id,
                 line.id as id ,\
