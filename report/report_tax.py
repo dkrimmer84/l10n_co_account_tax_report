@@ -232,8 +232,6 @@ class ReportTax(models.AbstractModel):
                         then (SUM(""" + _sum_condition + """) * 100) / (select at.amount from account_tax at where at.id = line.tax_line_id )
                         else 
                         0 end ))) * """+ str(report_sign) +""" as base_amount,
-                         
-                line.order_id as orden,
                 move.id as move_id,
                 line.id as id ,\
                 line.partner_id as partner_id ,\
@@ -254,7 +252,7 @@ class ReportTax(models.AbstractModel):
                 """+ condition + """
 
             GROUP BY \
-                line.id, line.tax_line_id, move.id, line.order_id\
+                line.id, line.tax_line_id, move.id\
             """, (tuple(tax_ids),
                 company_id, start_date, end_date, state))
              
