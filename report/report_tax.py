@@ -10,10 +10,6 @@ _logger = logging.getLogger(__name__)
 
 class ReportTax(models.AbstractModel):
     _inherit = 'report.account_tax_report.report_tax_view'
-
-
-
-
     #get the base amount as per tax from account move line
     def _compute_base_amount_bal(self, tax_ids, data, company_id, out_refund = False, report_sign = False):
         res = {}
@@ -25,33 +21,9 @@ class ReportTax(models.AbstractModel):
             state = ('draft', 'posted', 'paid')
         else:
             state = ('posted', )
-
         _sum_condition = self.sum_condition( tax_ids, out_refund, 'total' )
-
         
-        if start_date and end_date:
-            sql = """SELECT \
-                        SUM(""" + _sum_condition + """) * """+ str(report_sign) +""" as base_amount,\
-                        move_rel.account_tax_id as tax_id\
-                    from \
-                        account_move as move \
-                    LEFT JOIN \
-                        account_move_line move_line ON \
-                        (move_line.move_id = move.id) \
-                    LEFT JOIN \
-                        account_move_line_account_tax_rel move_rel ON \
-                        (move_rel.account_move_line_id = move_line.id) \
-                    where \
-                        move_line.date >= %s \
-                        AND move_line.date <= %s\
-                        AND move.id = move_line.move_id \
-                        AND move_rel.account_tax_id in %s \
-                        AND move_line.company_id = %s \
-                        AND move.state in %s \
-                    GROUP BY \
-                        move_rel.account_tax_id \
-                        """, ( start_date, end_date, tuple(tax_ids), company_id, state)
-        
+        if start_date and end_date:            
 
             self._cr.execute("""select \
                         SUM(""" + _sum_condition + """) * """+ str(report_sign) +""" as base_amount,\
@@ -110,6 +82,7 @@ class ReportTax(models.AbstractModel):
     def sum_condition(self, tax_ids, out_refund, use = 'detail'):
 
         _type_tax_use = self.type_tax_use( tax_ids )
+       
         sum_condition = False
         if not out_refund:
             sum_condition = 'credit' if _type_tax_use == 'sale' else 'debit'
@@ -253,6 +226,7 @@ class ReportTax(models.AbstractModel):
 
             GROUP BY \
                 line.id, line.tax_line_id, move.id\
+            ORDER BY line.id ASC    
             """, (tuple(tax_ids),
                 company_id, start_date, end_date, state))
              
