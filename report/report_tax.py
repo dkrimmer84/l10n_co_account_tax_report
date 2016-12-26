@@ -341,13 +341,19 @@ class ReportTax(models.AbstractModel):
 
         child_reports = tax_report._get_children_by_order()
 
+        _logger.info("child_reports=================")
+        _logger.info(child_reports)
+
         """for report1 in child_reports:
             (res2, res_detail2) = self.with_context(data.get('used_context'))._compute_report_balance(child_reports, data, out_refund)
 
 
         return False"""
 
-        (res, res_detail) = self.with_context(data.get('used_context'))._compute_report_balance(child_reports, data, out_refund, False)
+        (res, res_detail) = self.with_context(data.get('used_context'))._compute_report_balance(child_reports, data, out_refund, False, {}, {})
+
+        _logger.info("res_detail *********************")
+        _logger.info(res_detail)
 
 
         for report in child_reports:
@@ -425,11 +431,17 @@ class ReportTax(models.AbstractModel):
 
     @api.multi
     def render_html(self, data):
+
         self.model = self.env.context.get('active_model')
         docs = self.env[self.model].browse(self.env.context.get('active_id'))
         
+        _logger.info("Data***************************")
+        _logger.info(data)
 
         report_lines = self.get_tax_lines(data.get('form'), True)
+
+        _logger.info("repor lines **********************")
+        _logger.info(report_lines)
         
         
         docargs = {
