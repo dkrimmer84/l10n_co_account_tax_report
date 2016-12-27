@@ -106,8 +106,7 @@ class ReportTax(models.AbstractModel):
 		
 		result = self._cr.dictfetchall()
 		
-		_logger.info('result')
-		_logger.info(result)
+
 
 		return result
 
@@ -258,12 +257,14 @@ class ReportTax(models.AbstractModel):
 				account_move AS move \
 			WHERE \
 				line.tax_line_id in %s  \
+				AND """ + _sum_condition + """ > 0
 				AND line.company_id = %s \
 				AND move.id = line.move_id \
 				AND line.date >=  %s \
 				AND line.date <=  %s \
 				AND move.state in %s \
 				"""+ condition + """
+
 
 			GROUP BY \
 				line.id, line.tax_line_id, move.id\
@@ -290,6 +291,7 @@ class ReportTax(models.AbstractModel):
 				account_move AS move \
 			WHERE \
 				line.tax_line_id in %s  \
+				AND """ + _sum_condition + """ > 0
 				AND line.company_id = %s \
 				AND move.id = line.move_id \
 				AND move.state in %s \
@@ -300,6 +302,10 @@ class ReportTax(models.AbstractModel):
 				company_id, state))
 			
 		result = self._cr.dictfetchall()
+
+		_logger.info("El result")
+		_logger.info(result)
+
 		return result
 
 	def _compute_report_balance(self, reports, data, _out_refund = True, report_sign = False, _res = {}, _res_detail = {}):
@@ -470,14 +476,11 @@ class ReportTax(models.AbstractModel):
 
 		self.model = self.env.context.get('active_model')
 		docs = self.env[self.model].browse(self.env.context.get('active_id'))
-		
-		_logger.info("Data***************************")
-		_logger.info(data)
+
 
 		report_lines = self.get_tax_lines(data.get('form'), True)
 
-		_logger.info("repor lines **********************")
-		_logger.info(report_lines)
+
 		
 		
 		docargs = {
