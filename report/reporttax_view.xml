@@ -26,7 +26,7 @@
                         <table class="table table-condensed">
                             <thead>
                                 <tr>
-                                    <th>Impuesto</th>
+                                    <th style="width:300px !important">Impuesto</th>
                                     <th class="text-right">Total Impuesto</th> 
                                     <th class="text-right">Total Base</th>
                                     <!--<th class="text-right">Account Name</th>-->
@@ -43,14 +43,14 @@
                                         <t t-if="a.get('level') &gt; 3"><t t-set="style" t-value="'font-weight: normal;'"/></t>
                                         <t t-if="not a.get('level') &gt; 3"><t t-set="style" t-value="'font-weight: bold;'"/></t>
     
-                                        <td>
+                                        <td style="width:300px !important">
                                             <span style="color: white;" t-esc="'..' * a.get('level', 0)"/>
                                             <span t-att-style="style" t-esc="a.get('name')"/>
                                         </td>
                                         <td class="text-right"><span t-att-style="style" t-esc="a.get('tax_amount')" t-esc-options='{"widget": "monetary", "display_currency": "res_company.currency_id"}'/></td>
                                         <td class="text-right"><t t-if="a.get('base_amount')"><span t-att-style="style" t-esc="a.get('base_amount')" t-esc-options='{"widget": "monetary", "display_currency": "res_company.currency_id"}'/></t></td>
 
-                                        <td class="text-right" t-if="a.get('detail')"><span t-att-style="style" t-esc="a.get('notes')"/></td>
+                                        <!--<td class="text-right" t-if="a.get('detail')"><span t-att-style="style" t-esc="a.get('notes')"/></td>-->
                                         <td class="text-right"><span t-att-style="style" t-esc="a.get('partnername')"/></td>
                                         <!--<td class="text-right"><span t-att-style="style" t-esc="a.get('account')"/></td>-->
                                         <td class="text-right"><span t-att-style="style" t-esc="a.get('date')"/></td>
