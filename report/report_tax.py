@@ -160,6 +160,14 @@ class ReportTax(models.AbstractModel):
 
 		
 		_sum_condition = self.sum_condition( tax_ids, out_refund )
+
+		condition = "AND move.id in( select move_id from account_invoice where type in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type in ('out_refund', 'in_refund')   and account_move is not null )"
+		if not out_refund:
+			condition = "AND move.id in( select move_id from account_invoice where type not in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type not in ('out_refund', 'in_refund')   and account_move is not null )"
+
+		_logger.info("testttttttttttt ===")
+		_logger.info(tax_ids)
+		_logger.info(_sum_condition)
 			
 		if start_date and end_date:
 		   
@@ -174,7 +182,8 @@ class ReportTax(models.AbstractModel):
 				AND move.id = line.move_id \
 				AND line.date >=  %s \
 				AND line.date <=  %s \
-				AND move.state in %s                      
+				AND move.state in %s  
+				"""+ condition + """                    
 			GROUP BY \
 				line.tax_line_id \
 			""", (tuple(tax_ids),
@@ -191,6 +200,7 @@ class ReportTax(models.AbstractModel):
 				AND line.company_id = %s \
 				AND move.id = line.move_id \
 				AND move.state in %s 
+				"""+ condition + """
 			GROUP BY \
 				line.tax_line_id \
 			""", (tuple(tax_ids),
@@ -206,6 +216,9 @@ class ReportTax(models.AbstractModel):
 				if r['tax_id'] == base_amt['tax_id']:
 					if r['tax_id'] not in res:
 						res[r['tax_id']] =  {'id': r['tax_id'], 'tax_amount': r['tax_amount'], 'base_amount':base_amt['base_amount']}
+
+		_logger.info("ressssss")
+		_logger.info(res)
 
 		return res
 
