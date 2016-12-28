@@ -231,6 +231,8 @@ class ReportTax(models.AbstractModel):
 		res = {}
 
 		condition = "AND move.id in( select move_id from account_invoice where type in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type in ('out_refund', 'in_refund')   and account_move is not null )"
+		_logger.info('condicion')
+		_logger.info(condition)
 		if not out_refund:
 			condition = "AND move.id in( select move_id from account_invoice where type not in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type not in ('out_refund', 'in_refund')   and account_move is not null )"
 		
