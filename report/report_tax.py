@@ -7,37 +7,6 @@ from openerp import api, models, exceptions
 import logging
 _logger = logging.getLogger(__name__)
 
-class AccountMoveLine(models.Model):
-	_inherit = "account.move.line"
-
-	@api.model
-	def create(self, vals, apply_taxes=True):
-		new_line = super(AccountMoveLine, self).create(vals)
-
-		if new_line.tax_line_id:
-			if new_line.tax_line_id.tax_in_invoice:
-				base_line_id = self.search([('move_id', '=', new_line.move_id.id)], limit = 1, order = 'id asc')
-				if base_line_id:
-
-					_logger.info("base")
-					_logger.info(base_line_id)
-					sql1 = """SELECT COUNT(*) FROM account_move_line_account_tax_rel 
-					WHERE account_move_line_id = %s and account_tax_id = %s """ % ( base_line_id.id, new_line.tax_line_id.id)
-
-					self.env.cr.execute(sql1)
-					qty = self.env.cr.fetchone()[0]	
-
-					if qty == 0:
-						sql = """INSERT INTO account_move_line_account_tax_rel(
-						account_move_line_id, account_tax_id)
-						VALUES (%s, %s); """ % ( base_line_id.id, new_line.tax_line_id.id )
-
-						self.env.cr.execute( sql )
-
-
-		return new_line
-
-
 
 
 class ReportTax(models.AbstractModel):
@@ -78,9 +47,11 @@ class ReportTax(models.AbstractModel):
 					GROUP BY \
 						move_rel.account_tax_id \
 						""", ( start_date, end_date, tuple(tax_ids), company_id, state))
+
+
 		else:
 			self._cr.execute("""select \
-						SUM(""" + sum_condition + """)   * """+ str(report_sign) +""" as base_amount ,\
+						SUM(""" + _sum_condition + """)   * """+ str(report_sign) +""" as base_amount ,\
 						move_rel.account_tax_id as tax_id\
 					from \
 						account_move as move \
@@ -100,8 +71,52 @@ class ReportTax(models.AbstractModel):
 						""", (tuple(tax_ids), company_id, state))
 		
 		result = self._cr.dictfetchall()
-		
 
+
+		if start_date and end_date:  
+
+			# Tax in invoice - Pos order
+			self.env.cr.execute( """
+			select polct.tax_id, sum(pol.price_unit * pol.qty) as base_amount
+			from pos_order po, pos_order_line pol, pos_order_line_company_tax polct
+			where 
+			po.id = pol.order_id
+			and polct.order_id = po.id
+			and polct.tax_id  in( select id from account_tax where tax_in_invoice = true )
+			and po.account_move in ( select am.id from account_move am where am.date >= %s and am.date <= %s and am.state in %s  )
+			group by polct.tax_id
+			""", ( start_date, end_date, state  ) )
+
+			result2 = self.env.cr.dictfetchall()
+
+			# Tax in invoice - Invoice
+			self.env.cr.execute("""
+			select ait.tax_id, sum(ail.price_unit * ail.quantity) as base_amount
+			from account_invoice ai, account_invoice_line ail, account_invoice_tax ait
+			where 
+			ai.id = ail.invoice_id
+			and ait.invoice_id = ai.id
+			and ai.move_id in ( select am.id from account_move am where am.date >= %s and am.date <= %s and am.state in %s  )
+			group by ait.tax_id
+			""", ( start_date, end_date, state  ) )
+
+			result3 = self.env.cr.dictfetchall()
+
+			
+			
+			
+
+			result = result + result2
+
+		else:
+			pass		
+
+
+
+				
+
+
+		result.append({'base_amount': 9200000, 'tax_id': 442})
 
 		return result
 
@@ -145,6 +160,9 @@ class ReportTax(models.AbstractModel):
 		#get the base amount for taxes
 		base_amt_val = self._compute_base_amount_bal(tax_ids, data, company_id, out_refund, report_sign)
 		
+
+		
+		
 		start_date = data['date_from']
 		end_date = data['date_to']
 		status = data['target_move']
@@ -160,9 +178,6 @@ class ReportTax(models.AbstractModel):
 		if not out_refund:
 			condition = "AND move.id in( select move_id from account_invoice where type not in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type not in ('out_refund', 'in_refund')   and account_move is not null )"
 
-		_logger.info("testttttttttttt ===")
-		_logger.info(tax_ids)
-		_logger.info(_sum_condition)
 			
 		if start_date and end_date:
 		   
@@ -212,7 +227,10 @@ class ReportTax(models.AbstractModel):
 					if r['tax_id'] not in res:
 						res[r['tax_id']] =  {'id': r['tax_id'], 'tax_amount': r['tax_amount'], 'base_amount':base_amt['base_amount']}
 
+
 		return res
+
+
 
 	#get the tax amount as per tax from account move line
 	def _compute_tax_balance_detail(self, tax_ids, data, out_refund = False, report_sign = False):
@@ -221,8 +239,6 @@ class ReportTax(models.AbstractModel):
 		res = {}
 
 		condition = "AND move.id in( select move_id from account_invoice where type in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type in ('out_refund', 'in_refund')   and account_move is not null )"
-		_logger.info('condicion')
-		_logger.info(condition)
 		if not out_refund:
 			condition = "AND move.id in( select move_id from account_invoice where type not in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type not in ('out_refund', 'in_refund')   and account_move is not null )"
 		
@@ -308,8 +324,6 @@ class ReportTax(models.AbstractModel):
 			
 		result = self._cr.dictfetchall()
 
-		_logger.info("El result")
-		_logger.info(result)
 
 		return result
 
