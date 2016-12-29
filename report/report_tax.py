@@ -103,42 +103,44 @@ class ReportTax(models.AbstractModel):
 			result3 = self.env.cr.dictfetchall()
 
 			
-			tax_id_amount = {}
 
-			for tax in result2:
+			result4 = result2 + result3
 
-				tax_id_amount.update({
-					'tax_id' : tax.get('tax_id'),
-					'base_amount' : tax.get('base_amount') + tax_id_amount.get( tax.get('tax_id'), 0 )
+			result5 = {}
+			for tax in result4:
+
+				amount = 0
+				for tax2 in result4:	
+					if tax2.get('tax_id') == tax.get('tax_id'):
+						amount = amount + tax2.get('base_amount')
+
+				result5[ tax.get('tax_id') ] = amount
+
+			result6 = []
+
+			for tax in result5:
+
+				result6.append({
+					'tax_id' : tax,
+					'base_amount' : result5[ tax ]
 				})
 
-			for tax in result3:	
 
-				tax_id_amount.update({
-					'tax_id' : tax.get('tax_id'),
-					'base_amount' : tax.get('base_amount') + tax_id_amount.get( tax.get('tax_id'), 0 )
-				})
-
-			_logger.info("result444444444")
-			_logger.info( tax_id_amount )
-			result4 = [ tax_id_amount ]
-
-			"""_logger.info("result2")
-			_logger.info(result2)
-
-			_logger.info("result3")
-			_logger.info(result3)
 
 			_logger.info("result4")
-			_logger.info(result4)"""
+			_logger.info(result4)
 
-
-			result = result + result4
+			result = result + result6
 
 		else:
-			pass		
+			pass
+
+		_logger.info("result final")		
+		_logger.info( result )
 
 		return result
+
+
 
 	def type_tax_use( self, tax_ids ):
 		account_tax_model = self.env['account.tax']
