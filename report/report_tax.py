@@ -99,24 +99,53 @@ class ReportTax(models.AbstractModel):
 			and ai.move_id in ( select am.id from account_move am where am.date >= %s and am.date <= %s and am.state in %s  )
 			group by ait.tax_id
 			""", ( start_date, end_date, state  ) )
+<<<<<<< HEAD
 
 			result3 = self.env.cr.dictfetchall()
 
 			
 			
 			
+=======
+>>>>>>> 9ca6197f839ae412a1e3f52e5431f9fe9e393d8f
 
-			result = result + result2
+			result3 = self.env.cr.dictfetchall()
+
+			
+			tax_id_amount = {}
+
+			for tax in result2:
+
+				tax_id_amount.update({
+					'tax_id' : tax.get('tax_id'),
+					'base_amount' : tax.get('base_amount') + tax_id_amount.get( tax.get('tax_id'), 0 )
+				})
+
+			for tax in result3:	
+
+				tax_id_amount.update({
+					'tax_id' : tax.get('tax_id'),
+					'base_amount' : tax.get('base_amount') + tax_id_amount.get( tax.get('tax_id'), 0 )
+				})
+
+			_logger.info("result444444444")
+			_logger.info( tax_id_amount )
+			result4 = [ tax_id_amount ]
+
+			"""_logger.info("result2")
+			_logger.info(result2)
+
+			_logger.info("result3")
+			_logger.info(result3)
+
+			_logger.info("result4")
+			_logger.info(result4)"""
+
+
+			result = result + result4
 
 		else:
 			pass		
-
-
-
-				
-
-
-		result.append({'base_amount': 9200000, 'tax_id': 442})
 
 		return result
 
