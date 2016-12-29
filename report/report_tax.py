@@ -99,15 +99,6 @@ class ReportTax(models.AbstractModel):
 			and ai.move_id in ( select am.id from account_move am where am.date >= %s and am.date <= %s and am.state in %s  )
 			group by ait.tax_id
 			""", ( start_date, end_date, state  ) )
-<<<<<<< HEAD
-
-			result3 = self.env.cr.dictfetchall()
-
-			
-			
-			
-=======
->>>>>>> 9ca6197f839ae412a1e3f52e5431f9fe9e393d8f
 
 			result3 = self.env.cr.dictfetchall()
 
