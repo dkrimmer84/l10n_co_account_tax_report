@@ -75,7 +75,7 @@ class ReportTax(models.AbstractModel):
 
 		if start_date and end_date:  
 
-			# Tax in invoice
+			# Tax in invoice - Pos order
 			self.env.cr.execute( """
 			select polct.tax_id, sum(pol.price_unit * pol.qty) as base_amount
 			from pos_order po, pos_order_line pol, pos_order_line_company_tax polct
@@ -89,10 +89,48 @@ class ReportTax(models.AbstractModel):
 
 			result2 = self.env.cr.dictfetchall()
 
-			_logger.info("result2")
-			_logger.info( result2 )
+			# Tax in invoice - Invoice
+			self.env.cr.execute("""
+			select ait.tax_id, sum(ail.price_unit * ail.quantity) as base_amount
+			from account_invoice ai, account_invoice_line ail, account_invoice_tax ait
+			where 
+			ai.id = ail.invoice_id
+			and ait.invoice_id = ai.id
+			and ai.move_id in ( select am.id from account_move am where am.date >= %s and am.date <= %s and am.state in %s  )
+			group by ait.tax_id
+			""", ( start_date, end_date, state  ) )
 
-			result = result + result2
+			result3 = self.env.cr.dictfetchall()
+
+			result4 = []
+
+			for tax2 in result2:
+				_logger.info("tax2")
+				_logger.info( tax2 )
+
+				r = {}
+				base_amount = 0
+
+				for tax3 in result3:
+					if tax2.get('tax_id') == tax3.get('tax_id'):
+						base_amount += tax3.get('base_amount')
+
+				r = {'base_amount' : tax2.get('base_amount') + base_amount, 'tax_id' : tax2.get('tax_id') }
+
+				result4.append( r )
+
+
+			_logger.info("result2")
+			_logger.info(result2)
+
+			_logger.info("result3")
+			_logger.info(result3)
+
+			_logger.info("result4")
+			_logger.info(result4)
+
+
+			result = result + result4
 
 		else:
 			pass		
