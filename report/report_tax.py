@@ -35,11 +35,6 @@ class AccountMoveLine(models.Model):
 						self.env.cr.execute( sql )
 
 
-					
-
-
-
-
 		return new_line
 
 
@@ -217,12 +212,7 @@ class ReportTax(models.AbstractModel):
 					if r['tax_id'] not in res:
 						res[r['tax_id']] =  {'id': r['tax_id'], 'tax_amount': r['tax_amount'], 'base_amount':base_amt['base_amount']}
 
-		_logger.info("ressssss")
-		_logger.info(res)
-
 		return res
-
-
 
 	#get the tax amount as per tax from account move line
 	def _compute_tax_balance_detail(self, tax_ids, data, out_refund = False, report_sign = False):
