@@ -73,6 +73,12 @@ class ReportTax(models.AbstractModel):
 		result = self._cr.dictfetchall()
 
 
+		condition_refund = "and type in ('out_refund', 'in_refund')"
+		if not out_refund:
+			condition_refund = "and type not in ('out_refund', 'in_refund')"
+
+
+
 		if start_date and end_date:  
 
 			# Tax in invoice - Pos order
@@ -83,7 +89,7 @@ class ReportTax(models.AbstractModel):
 			po.id = pol.order_id
 			and polct.order_id = po.id
 			and polct.tax_id  in( select id from account_tax where tax_in_invoice = true )
-			and po.account_move in ( select am.id from account_move am where am.date >= %s and am.date <= %s and am.state in %s  )
+			and po.account_move in ( select am.id from account_move am where am.date >= %s and am.date <= %s and am.state in %s """ + condition_refund +  """  )
 			group by polct.tax_id
 			""", ( start_date, end_date, state  ) )
 
@@ -96,49 +102,51 @@ class ReportTax(models.AbstractModel):
 			where 
 			ai.id = ail.invoice_id
 			and ait.invoice_id = ai.id
-			and ai.move_id in ( select am.id from account_move am where am.date >= %s and am.date <= %s and am.state in %s  )
+			and ai.move_id in ( select am.id from account_move am where am.date >= %s and am.date <= %s and am.state in %s """ + condition_refund +  """  )
 			group by ait.tax_id
 			""", ( start_date, end_date, state  ) )
 
 			result3 = self.env.cr.dictfetchall()
 
 			
-			tax_id_amount = {}
 
-			for tax in result2:
+			result4 = result2 + result3
 
-				tax_id_amount.update({
-					'tax_id' : tax.get('tax_id'),
-					'base_amount' : tax.get('base_amount') + tax_id_amount.get( tax.get('tax_id'), 0 )
+			result5 = {}
+			for tax in result4:
+
+				amount = 0
+				for tax2 in result4:	
+					if tax2.get('tax_id') == tax.get('tax_id'):
+						amount = amount + tax2.get('base_amount')
+
+				result5[ tax.get('tax_id') ] = amount
+
+			result6 = []
+
+			for tax in result5:
+
+				result6.append({
+					'tax_id' : tax,
+					'base_amount' : result5[ tax ]
 				})
 
-			for tax in result3:	
 
-				tax_id_amount.update({
-					'tax_id' : tax.get('tax_id'),
-					'base_amount' : tax.get('base_amount') + tax_id_amount.get( tax.get('tax_id'), 0 )
-				})
-
-			_logger.info("result444444444")
-			_logger.info( tax_id_amount )
-			result4 = [ tax_id_amount ]
-
-			"""_logger.info("result2")
-			_logger.info(result2)
-
-			_logger.info("result3")
-			_logger.info(result3)
 
 			_logger.info("result4")
-			_logger.info(result4)"""
+			_logger.info(result4)
 
-
-			result = result + result4
+			result = result + result6
 
 		else:
-			pass		
+			pass
+
+		_logger.info("result final")		
+		_logger.info( result )
 
 		return result
+
+
 
 	def type_tax_use( self, tax_ids ):
 		account_tax_model = self.env['account.tax']
