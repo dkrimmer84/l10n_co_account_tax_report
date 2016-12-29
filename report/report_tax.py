@@ -73,6 +73,12 @@ class ReportTax(models.AbstractModel):
 		result = self._cr.dictfetchall()
 
 
+		condition_refund = "and type in ('out_refund', 'in_refund')"
+		if not out_refund:
+			condition_refund = "and type not in ('out_refund', 'in_refund')"
+
+
+
 		if start_date and end_date:  
 
 			# Tax in invoice - Pos order
@@ -83,7 +89,7 @@ class ReportTax(models.AbstractModel):
 			po.id = pol.order_id
 			and polct.order_id = po.id
 			and polct.tax_id  in( select id from account_tax where tax_in_invoice = true )
-			and po.account_move in ( select am.id from account_move am where am.date >= %s and am.date <= %s and am.state in %s  )
+			and po.account_move in ( select am.id from account_move am where am.date >= %s and am.date <= %s and am.state in %s """ + condition_refund +  """  )
 			group by polct.tax_id
 			""", ( start_date, end_date, state  ) )
 
@@ -96,7 +102,7 @@ class ReportTax(models.AbstractModel):
 			where 
 			ai.id = ail.invoice_id
 			and ait.invoice_id = ai.id
-			and ai.move_id in ( select am.id from account_move am where am.date >= %s and am.date <= %s and am.state in %s  )
+			and ai.move_id in ( select am.id from account_move am where am.date >= %s and am.date <= %s and am.state in %s """ + condition_refund +  """  )
 			group by ait.tax_id
 			""", ( start_date, end_date, state  ) )
 
