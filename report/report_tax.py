@@ -102,45 +102,41 @@ class ReportTax(models.AbstractModel):
 
 			result3 = self.env.cr.dictfetchall()
 
-			result4 = []
+			
+			tax_id_amount = {}
 
-			for tax2 in result2:
-				_logger.info("tax2")
-				_logger.info( tax2 )
+			for tax in result2:
 
-				r = {}
-				base_amount = 0
+				tax_id_amount.update({
+					'tax_id' : tax.get('tax_id'),
+					'base_amount' : tax.get('base_amount') + tax_id_amount.get( tax.get('tax_id'), 0 )
+				})
 
-				for tax3 in result3:
-					if tax2.get('tax_id') == tax3.get('tax_id'):
-						base_amount += tax3.get('base_amount')
+			for tax in result3:	
 
-				r = {'base_amount' : tax2.get('base_amount') + base_amount, 'tax_id' : tax2.get('tax_id') }
+				tax_id_amount.update({
+					'tax_id' : tax.get('tax_id'),
+					'base_amount' : tax.get('base_amount') + tax_id_amount.get( tax.get('tax_id'), 0 )
+				})
 
-				result4.append( r )
+			_logger.info("result444444444")
+			_logger.info( tax_id_amount )
+			result4 = [ tax_id_amount ]
 
-
-			_logger.info("result2")
+			"""_logger.info("result2")
 			_logger.info(result2)
 
 			_logger.info("result3")
 			_logger.info(result3)
 
 			_logger.info("result4")
-			_logger.info(result4)
+			_logger.info(result4)"""
 
 
 			result = result + result4
 
 		else:
 			pass		
-
-
-
-				
-
-
-		result.append({'base_amount': 9200000, 'tax_id': 442})
 
 		return result
 
