@@ -86,7 +86,7 @@ class ReportTax(models.AbstractModel):
 
 			# Tax in invoice - Pos order
 			self.env.cr.execute( """
-			select polct.tax_id, sum(pol.price_unit * pol.qty) as base_amount
+			select polct.tax_id, sum(pol.price_unit * pol.qty)    * """+ str(report_sign) +""" as base_amount
 			from pos_order po, pos_order_line pol, pos_order_line_company_tax polct
 			where 
 			po.id = pol.order_id
@@ -100,7 +100,7 @@ class ReportTax(models.AbstractModel):
 
 			# Tax in invoice - Invoice
 			self.env.cr.execute("""
-			select ait.tax_id, sum(ail.price_unit * ail.quantity) as base_amount
+			select ait.tax_id, sum(ail.price_unit * ail.quantity)    * """+ str(report_sign) +""" as base_amount
 			from account_invoice ai, account_invoice_line ail, account_invoice_tax ait
 			where 
 			ai.id = ail.invoice_id
