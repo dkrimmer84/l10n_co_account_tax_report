@@ -203,7 +203,7 @@ class ReportTax(models.AbstractModel):
 		
 		_sum_condition = self.sum_condition( tax_ids, out_refund )
 
-		condition = """AND case when(line.invoice_id) is null then (line.name ~ 'Refund' AND move.id in( select move_id from account_invoice 
+		condition = """AND case when(line.invoice_id) is null then (case when LOWER(line.name) ~ 'iva' then LOWER(line.name) ~ 'iva' else line.name ~ 'Refund' end AND move.id in( select move_id from account_invoice 
 					   where type in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type in 
 					   ('out_refund', 'in_refund')   and account_move is not null )) else (move.id in( select move_id from account_invoice 
 					   where type in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type in 
@@ -274,7 +274,7 @@ class ReportTax(models.AbstractModel):
 		company_id = self.env.user.company_id.id
 		res = {}
 
-		condition = """AND case when(line.invoice_id) is null then (line.name ~ 'Refund' AND move.id in( select move_id from account_invoice 
+		condition = """AND case when(line.invoice_id) is null then (case when line.name ~ 'IVA' then line.name ~ 'IVA' else line.name ~ 'Refund' end  AND move.id in( select move_id from account_invoice 
 					   where type in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type in 
 					   ('out_refund', 'in_refund')   and account_move is not null )) else (move.id in( select move_id from account_invoice 
 					   where type in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type in 
