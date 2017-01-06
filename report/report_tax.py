@@ -157,16 +157,32 @@ class ReportTax(models.AbstractModel):
 			return account_tax_id.type_tax_use
 
 		return False
+	def tax_groups( self, tax_ids ):
+		account_tax_model = self.env['account.tax']
+		account_tax_id = account_tax_model.search([('id', '=', tax_ids[ 0 ])])
+
+		if account_tax_id:
+			return account_tax_id.tax_group_id.name
+
+		return False
 
 	def sum_condition(self, tax_ids, out_refund, use = 'detail'):
 
 		_type_tax_use = self.type_tax_use( tax_ids )
-	   
+	   	_tax_groups = self.tax_groups( tax_ids )
+	   	
 		sum_condition = False
+
 		if not out_refund:
-			sum_condition = 'credit' if _type_tax_use == 'sale' else 'debit'
+			if 'retenci' in _tax_groups.lower():
+				sum_condition = 'debit' if _type_tax_use == 'sale' else 'credit'
+			else:
+				sum_condition = 'credit' if _type_tax_use == 'sale' else 'debit'
 		else:
-			sum_condition = 'debit' if _type_tax_use == 'sale' else 'credit'
+			if 'retenci' in _tax_groups.lower():
+				sum_condition = 'credit' if _type_tax_use == 'sale' else 'debit'
+			else:
+				sum_condition = 'debit' if _type_tax_use == 'sale' else 'credit'
 
 		"""if not out_refund:
 			sum_condition = 'debit' if _type_tax_use == 'sale' else 'credit'
