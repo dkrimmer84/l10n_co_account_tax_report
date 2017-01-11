@@ -14,7 +14,14 @@ class ReportTax(models.AbstractModel):
 	#get the base amount as per tax from account move line
 	def _compute_base_amount_bal(self, tax_ids, data, company_id, out_refund = False, report_sign = False):
 		res = {}
-		
+		iva = False
+	   	_tax_in_invoice = self.tax_in_invoice( tax_ids )
+	   	_logger.info('tax_ids')
+	   	_logger.info(tax_ids)
+	   	if not _tax_in_invoice:
+	   		_logger.info('entraaaaa')
+	   		iva = True
+
 		start_date = data['date_from']
 		end_date = data['date_to']
 		status = data['target_move']
@@ -78,15 +85,12 @@ class ReportTax(models.AbstractModel):
 			condition_refund = "and type not in ('out_refund', 'in_refund')"
 
 
-
-
-
-
 		if start_date and end_date:  
-
+			_logger.info('Ivaaaaaaaa')
+			_logger.info(iva)
 			# Tax in invoice - Pos order
 			self.env.cr.execute( """
-			select polct.tax_id, sum(pol.price_unit * case when pol.qty < 0 then (pol.qty * -1) else pol.qty end)    * """+ str(report_sign) +""" as base_amount
+			select polct.tax_id, sum(pol.price_subtotal_line) * """+ str(report_sign) +""" as base_amount
 			from pos_order po, pos_order_line pol, pos_order_line_company_tax polct
 			where 
 			po.id = pol.order_id
@@ -100,7 +104,7 @@ class ReportTax(models.AbstractModel):
 
 			# Tax in invoice - Invoice
 			self.env.cr.execute("""
-			select ait.tax_id, sum(ail.price_unit * case when ail.quantity < 0 then (ail.quantity * -1) else ail.quantity end)    * """+ str(report_sign) +""" as base_amount
+			select ait.tax_id, sum(ail.price_subtotal) * """+ str(report_sign) +""" as base_amount
 			from account_invoice ai, account_invoice_line ail, account_invoice_tax ait
 			where 
 			ai.id = ail.invoice_id
@@ -134,16 +138,11 @@ class ReportTax(models.AbstractModel):
 					'base_amount' : result5[ tax ]
 				})
 
-			_logger.info("result4")
-			_logger.info(result4)
 
 			result = result + result6
 
 		else:
 			pass
-
-		_logger.info("result final")		
-		_logger.info( result )
 
 		return result
 
@@ -157,29 +156,38 @@ class ReportTax(models.AbstractModel):
 			return account_tax_id.type_tax_use
 
 		return False
-	def tax_groups( self, tax_ids ):
+	def tax_in_invoice( self, tax_ids ):
 		account_tax_model = self.env['account.tax']
 		account_tax_id = account_tax_model.search([('id', '=', tax_ids[ 0 ])])
 
 		if account_tax_id:
-			return account_tax_id.tax_group_id.name
+			return account_tax_id.tax_in_invoice
+
+		return False
+	def not_impact_balance( self, tax_ids ):
+		account_tax_model = self.env['account.tax']
+		account_tax_id = account_tax_model.search([('id', '=', tax_ids[ 0 ])])
+
+		if account_tax_id:
+			return account_tax_id.dont_impact_balance
 
 		return False
 
 	def sum_condition(self, tax_ids, out_refund, use = 'detail'):
 
 		_type_tax_use = self.type_tax_use( tax_ids )
-	   	_tax_groups = self.tax_groups( tax_ids )
+	   	_tax_in_invoice = self.tax_in_invoice( tax_ids )
+	   	_dont_impact_balance = self.not_impact_balance( tax_ids )
 	   	
 		sum_condition = False
 
 		if not out_refund:
-			if 'retenci' in _tax_groups.lower():
+			if _tax_in_invoice and not _dont_impact_balance:
 				sum_condition = 'debit' if _type_tax_use == 'sale' else 'credit'
 			else:
 				sum_condition = 'credit' if _type_tax_use == 'sale' else 'debit'
 		else:
-			if 'retenci' in _tax_groups.lower():
+			if _tax_in_invoice and not _dont_impact_balance:
 				sum_condition = 'credit' if _type_tax_use == 'sale' else 'debit'
 			else:
 				sum_condition = 'debit' if _type_tax_use == 'sale' else 'credit'
