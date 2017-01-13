@@ -4,7 +4,7 @@
         <t t-call="report.html_container">
             <t t-foreach="docs" t-as="o">
                 <t t-call="report.internal_layout">
-                    <div class="page">
+                    <div class="page" style="font-size: 11px !important;">
                         <h2 t-esc="data['tax_report_id'][1]"/>
                         
                         <div class="row mt32 mb32">
@@ -27,14 +27,14 @@
                             <thead>
                                 <tr>
                                     <th style="width:260px !important">Impuesto</th>
-                                    <th style="width:120px; text-align: left;padding-left: 10px;" class="text-right">Total Impuesto</th> 
-                                    <th style="width:120px; text-align: left;padding-left: 10px;" class="text-right">Total Base</th>
                                     <!--<th class="text-right">Account Name</th>-->
                                     <t t-if="data['display_detail']">
                                         <th style="width:350px; text-align: left;padding-left: 10px;" class="text-right">Tercero</th>
                                         <th style="width:120px; text-align: left;padding-left: 10px;" class="text-right">Fecha</th>
                                         <th style="width:230px; text-align: left;padding-left: 10px;" class="text-right">Ref</th>
-                                    </t>
+                                    </t> 
+                                    <th style="width:120px; padding-left: 10px;" class="text-right">Total Base</th>
+                                    <th style="width:120px; padding-left: 10px;" class="text-right">Total Impuesto</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -47,14 +47,14 @@
                                             <span style="color: white;" t-esc="'..' * a.get('level', 0)"/>
                                             <span t-att-style="style" t-esc="a.get('name')"/>
                                         </td>
-                                        <td style="width:120px; text-align: left;padding-left: 10px;" class="text-right"><span t-att-style="style" t-esc="a.get('tax_amount')" t-esc-options='{"widget": "monetary", "display_currency": "res_company.currency_id"}'/></td>
-                                        <td style="width:120px; text-align: left;padding-left: 10px;" class="text-right"><t t-if="a.get('base_amount')"><span t-att-style="style" t-esc="a.get('base_amount')" t-esc-options='{"widget": "monetary", "display_currency": "res_company.currency_id"}'/></t></td>
-
                                         <!--<td class="text-right" t-if="a.get('detail')"><span t-att-style="style" t-esc="a.get('notes')"/></td>-->
                                         <td style="width:350px; text-align: left;padding-left: 10px;" class="text-right"><span t-att-style="style" t-esc="a.get('partnername')"/></td>
                                         <!--<td class="text-right"><span t-att-style="style" t-esc="a.get('account')"/></td>-->
                                         <td style="width:120px; text-align: left;padding-left: 10px;" class="text-right"><span t-att-style="style" t-esc="a.get('date')"/></td>
-                                        <td style="width:230px; text-align: left;padding-left: 10px;" class="text-right"><span t-att-style="style" t-esc="a.get('ref')"/></td>
+                                        <td style="width:200px; text-align: left;padding-left: 10px;" class="text-right"><span t-att-style="style" t-esc="a.get('ref')"/></td>
+                                        <td style="width:120px; padding-left: 10px;" class="text-right"><t t-if="a.get('base_amount')"><span t-att-style="style" t-esc="a.get('base_amount')" t-esc-options='{"widget": "monetary", "display_currency": "res_company.currency_id"}'/></t></td>
+
+                                        <td style="width:120px;padding-left: 10px;" class="text-right"><span t-att-style="style" t-esc="a.get('tax_amount')" t-esc-options='{"widget": "monetary", "display_currency": "res_company.currency_id"}'/></td>
                                     </t>
                                 </tr>
                             </tbody>

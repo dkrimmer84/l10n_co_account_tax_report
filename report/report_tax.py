@@ -86,8 +86,6 @@ class ReportTax(models.AbstractModel):
 
 
 		if start_date and end_date:  
-			_logger.info('Ivaaaaaaaa')
-			_logger.info(iva)
 			# Tax in invoice - Pos order
 			self.env.cr.execute( """
 			select polct.tax_id, sum(pol.price_subtotal_line) * """+ str(report_sign) +""" as base_amount
@@ -310,8 +308,6 @@ class ReportTax(models.AbstractModel):
 						   where type not in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type 
 						   not in ('out_refund', 'in_refund')   and account_move is not null )) end"""
 		
-		_logger.info("Condition")	
-		_logger.info(condition)	
 		
 		start_date = data['date_from']
 		end_date = data['date_to']
@@ -330,8 +326,7 @@ class ReportTax(models.AbstractModel):
 				(select ( ( 
 					case when (select amount_untaxed from account_invoice where id = line.invoice_id) is null 
 					then 0 
-					else (select amount_untaxed from account_invoice where id = line.invoice_id) end ) +                                         
-
+					else (select amount_untaxed from account_invoice where id = line.invoice_id) end ) +
 					(case when 
 						(select amount_untaxed from account_invoice where id = line.invoice_id) is null                         
 						then (SUM(""" + _sum_condition + """) * 100) / (select (case when at.amount < 0 then (at.amount * -1) else at.amount end) from account_tax at where at.id = line.tax_line_id)
@@ -372,8 +367,7 @@ class ReportTax(models.AbstractModel):
 				(select ( ( 
 					case when (select amount_untaxed from account_invoice where id = line.invoice_id) is null 
 					then 0 
-					else (select amount_untaxed from account_invoice where id = line.invoice_id) end ) +                                         
-
+					else (select amount_untaxed from account_invoice where id = line.invoice_id) end ) + 
 					(case when 
 						(select amount_untaxed from account_invoice where id = line.invoice_id) is null                         
 						then (SUM(""" + _sum_condition + """) * 100) / (select (case when at.amount < 0 then (at.amount * -1) else at.amount end) from account_tax at where at.id = line.tax_line_id)
@@ -402,7 +396,8 @@ class ReportTax(models.AbstractModel):
 				company_id, state))
 			
 		result = self._cr.dictfetchall()
-
+		_logger.info('resultado *********************************************')
+		_logger.info(result)
 
 		return result
 
