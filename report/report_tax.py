@@ -315,8 +315,10 @@ class ReportTax(models.AbstractModel):
 			state = ('posted', )
 
 		_sum_condition = self.sum_condition( tax_ids, out_refund )
+		#line.base_tax
+		if start_date and end_date:
 
-		if start_date and end_date:            
+
 
 			self._cr.execute("""SELECT  \
 				SUM(""" + _sum_condition + """)   * """+ str(report_sign) +""" AS tax_amount ,\
@@ -326,7 +328,7 @@ class ReportTax(models.AbstractModel):
 					else (select amount_untaxed from account_invoice where id = line.invoice_id) end ) +
 					(case when 
 						(select amount_untaxed from account_invoice where id = line.invoice_id) is null                         
-						then line.base_tax  else 0 end ))) * """+ str(report_sign) +""" as base_amount,
+						then (case when (select actx.tax_in_invoice from account_tax actx where actx.id = line.tax_line_id ) then line.base_tax else 0 end )  else 0 end ))) * """+ str(report_sign) +""" as base_amount,
 				move.id as move_id,
 				line.id as id ,\
 				line.partner_id as partner_id ,\
@@ -365,9 +367,7 @@ class ReportTax(models.AbstractModel):
 					else (select amount_untaxed from account_invoice where id = line.invoice_id) end ) + 
 					(case when 
 						(select amount_untaxed from account_invoice where id = line.invoice_id) is null                         
-						then (SUM(""" + _sum_condition + """) * 100) / (select (case when at.amount < 0 then (at.amount * -1) else at.amount end) from account_tax at where at.id = line.tax_line_id)
-						else 
-						0 end ))) * """+ str(report_sign) +""" as base_amount,
+						then line.base_tax  else 0 end ))) * """+ str(report_sign) +""" as base_amount,
 				move.id as move_id,
 				line.id as id ,\
 				line.partner_id as partner_id ,\
@@ -393,6 +393,45 @@ class ReportTax(models.AbstractModel):
 		result = self._cr.dictfetchall()
 		_logger.info('resultado *********************************************')
 		_logger.info(result)
+
+		pos_order_model = self.env['pos.order']
+		pos = 0
+		for res in result:
+
+			_logger.info('out_refund')
+			_logger.info(out_refund)
+
+
+			_type = ['out_refund', 'in_refund']
+			if not out_refund:
+				_type = ['out_invoice', 'in_invoice']
+
+			pos_order_ids = pos_order_model.search([('partner_id', '=', res.get('partner_id')),('account_move', '=', res.get('move_id')),
+				('type', 'in', _type)])
+			subtotal = 0
+			if pos_order_ids:
+				subtotal = 0
+				for order in pos_order_ids:
+					for line in order.lines:
+						subtotal += line.price_subtotal
+
+			
+			#_logger.info( subtotal )	
+
+			base_amount = result[ pos ].get('base_amount', 0)
+			#_logger.info( base_amount )
+
+			if not base_amount:
+				result[ pos ].update({
+					'base_amount' : subtotal
+				})
+
+			pos += 1
+
+
+
+
+
 
 		return result
 
