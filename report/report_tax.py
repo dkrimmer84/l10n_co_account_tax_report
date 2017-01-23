@@ -16,10 +16,7 @@ class ReportTax(models.AbstractModel):
 		res = {}
 		iva = False
 	   	_tax_in_invoice = self.tax_in_invoice( tax_ids )
-	   	_logger.info('tax_ids')
-	   	_logger.info(tax_ids)
 	   	if not _tax_in_invoice:
-	   		_logger.info('entraaaaa')
 	   		iva = True
 
 		start_date = data['date_from']
@@ -329,9 +326,7 @@ class ReportTax(models.AbstractModel):
 					else (select amount_untaxed from account_invoice where id = line.invoice_id) end ) +
 					(case when 
 						(select amount_untaxed from account_invoice where id = line.invoice_id) is null                         
-						then (SUM(""" + _sum_condition + """) * 100) / (select (case when at.amount < 0 then (at.amount * -1) else at.amount end) from account_tax at where at.id = line.tax_line_id)
-						else 
-						0 end ))) * """+ str(report_sign) +""" as base_amount,
+						then line.base_tax  else 0 end ))) * """+ str(report_sign) +""" as base_amount,
 				move.id as move_id,
 				line.id as id ,\
 				line.partner_id as partner_id ,\
