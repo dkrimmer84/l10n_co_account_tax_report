@@ -331,7 +331,7 @@ class ReportTax(models.AbstractModel):
 					else (select amount_untaxed from account_invoice where id = line.invoice_id) end ) +
 					(case when 
 						(select amount_untaxed from account_invoice where id = line.invoice_id) is null                         
-						then (case when (select actx.tax_in_invoice from account_tax actx where actx.id = line.tax_line_id ) then line.base_tax else 0 end )  else 0 end ))) * """+ str(report_sign) +""" as base_amount,
+						then 0 else 0 end ))) * """+ str(report_sign) +""" as base_amount,
 				move.id as move_id,
 				line.id as id ,\
 				line.partner_id as partner_id ,\
@@ -394,16 +394,10 @@ class ReportTax(models.AbstractModel):
 				company_id, state))
 			
 		result = self._cr.dictfetchall()
-		#_logger.info('resultado *********************************************')
-		#_logger.info(result)
 
 		pos_order_model = self.env['pos.order']
 		pos = 0
 		for res in result:
-
-			#_logger.info('out_refund')
-			#_logger.info(out_refund)
-
 
 			_type = ['out_refund', 'in_refund']
 			if not out_refund:
