@@ -27,6 +27,9 @@ class ReportTax(models.AbstractModel):
 		else:
 			state = ('posted', )
 		_sum_condition = self.sum_condition( tax_ids, out_refund, 'total' )
+
+		_logger.info('sum_condition')
+		_logger.info(_sum_condition)
 		
 		if start_date and end_date:            
 
@@ -138,7 +141,7 @@ class ReportTax(models.AbstractModel):
 
 		else:
 			pass
-
+		_logger.info(result)	
 		return result
 
 
@@ -391,15 +394,15 @@ class ReportTax(models.AbstractModel):
 				company_id, state))
 			
 		result = self._cr.dictfetchall()
-		_logger.info('resultado *********************************************')
-		_logger.info(result)
+		#_logger.info('resultado *********************************************')
+		#_logger.info(result)
 
 		pos_order_model = self.env['pos.order']
 		pos = 0
 		for res in result:
 
-			_logger.info('out_refund')
-			_logger.info(out_refund)
+			#_logger.info('out_refund')
+			#_logger.info(out_refund)
 
 
 			_type = ['out_refund', 'in_refund']
