@@ -27,9 +27,6 @@ class ReportTax(models.AbstractModel):
 		else:
 			state = ('posted', )
 		_sum_condition = self.sum_condition( tax_ids, out_refund, 'total' )
-
-		_logger.info('sum_condition')
-		_logger.info(_sum_condition)
 		
 		if start_date and end_date:            
 
@@ -141,6 +138,7 @@ class ReportTax(models.AbstractModel):
 
 		else:
 			pass
+		_logger.info('pruebaaaaaaa')
 		_logger.info(result)	
 		return result
 
@@ -211,8 +209,8 @@ class ReportTax(models.AbstractModel):
 		#get the base amount for taxes
 		base_amt_val = self._compute_base_amount_bal(tax_ids, data, company_id, out_refund, report_sign)
 		
-
-		
+		_logger.info('base_amt')
+		_logger.info(base_amt_val)
 		
 		start_date = data['date_from']
 		end_date = data['date_to']
@@ -225,18 +223,37 @@ class ReportTax(models.AbstractModel):
 		
 		_sum_condition = self.sum_condition( tax_ids, out_refund )
 
-		condition = """AND case when(line.invoice_id) is null then (case when LOWER(line.name) ~ 'iva' then LOWER(line.name) ~ 'iva' else line.name ~ 'Refund' end AND move.id in( select move_id from account_invoice 
-					   where type in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type in 
-					   ('out_refund', 'in_refund')   and account_move is not null )) else (move.id in( select move_id from account_invoice 
-					   where type in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type in 
-					   ('out_refund', 'in_refund')   and account_move is not null )) end """
-		if not out_refund:
-			condition = """AND case when(line.invoice_id) is null then (not line.name ~ 'Refund' AND move.id in( select move_id from account_invoice 
-						   where type not in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type 
-						   not in ('out_refund', 'in_refund')   and account_move is not null )) else (move.id in( select move_id from account_invoice 
-						   where type not in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type 
-						   not in ('out_refund', 'in_refund')   and account_move is not null )) end"""
+		_type_tax_use = self.type_tax_use( tax_ids )
+
+		if _type_tax_use == 'sale':
+
+			condition = """AND case when(line.invoice_id) is null then (case when line.name ~ 'IVA' then line.name ~ 'IVA' else line.name ~ 'Refund' end  AND move.id in( select move_id from account_invoice 
+						   where type in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type in 
+						   ('out_refund', 'in_refund')   and account_move is not null )) else (move.id in( select move_id from account_invoice 
+						   where type in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type in 
+						   ('out_refund', 'in_refund')   and account_move is not null )) end """
+						   
+			if not out_refund:
+				condition = """AND case when(line.invoice_id) is null then (not line.name ~ 'Refund' AND move.id in( select move_id from account_invoice 
+							   where type not in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type 
+							   not in ('out_refund', 'in_refund')   and account_move is not null )) else (move.id in( select move_id from account_invoice 
+							   where type not in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type 
+							   not in ('out_refund', 'in_refund')   and account_move is not null)) end"""
+		else:
 			
+			condition = """AND case when(line.invoice_id) is null then (case when line.name ~ 'IVA' then line.name ~ 'IVA' else line.name ~ 'Refund' end  AND move.id in( select move_id from account_invoice 
+						   where type in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type in 
+						   ('out_refund', 'in_refund')   and account_move is not null )) else (move.id in( select move_id from account_invoice 
+						   where type in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type in 
+						   ('out_refund', 'in_refund')   and account_move is not null )) end """
+						   
+			if not out_refund:
+				
+				condition = """AND case when(line.invoice_id) is null then (not line.name ~ 'Refund' AND move.id in( select move_id from account_invoice 
+							   where type not in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move_id from hr_expense where account_move_id is not null )) 
+							   else (move.id in( select move_id from account_invoice 
+							   where type not in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move_id from hr_expense where account_move_id is not null)) end"""
+		
 		if start_date and end_date:
 		   
 			self._cr.execute( """SELECT  \
@@ -285,29 +302,45 @@ class ReportTax(models.AbstractModel):
 					if r['tax_id'] not in res:
 						res[r['tax_id']] =  {'id': r['tax_id'], 'tax_amount': r['tax_amount'], 'base_amount':base_amt['base_amount']}
 
-
+		_logger.info(result)
+		_logger.info(res)				
 		return res
 
 
 
 	#get the tax amount as per tax from account move line
 	def _compute_tax_balance_detail(self, tax_ids, data, out_refund = False, report_sign = False):
-
+		
 		company_id = self.env.user.company_id.id
 		res = {}
+		_type_tax_use = self.type_tax_use( tax_ids )
 
-		condition = """AND case when(line.invoice_id) is null then (case when line.name ~ 'IVA' then line.name ~ 'IVA' else line.name ~ 'Refund' end  AND move.id in( select move_id from account_invoice 
-					   where type in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type in 
-					   ('out_refund', 'in_refund')   and account_move is not null )) else (move.id in( select move_id from account_invoice 
-					   where type in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type in 
-					   ('out_refund', 'in_refund')   and account_move is not null )) end """
-		if not out_refund:
-			condition = """AND case when(line.invoice_id) is null then (not line.name ~ 'Refund' AND move.id in( select move_id from account_invoice 
-						   where type not in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type 
-						   not in ('out_refund', 'in_refund')   and account_move is not null )) else (move.id in( select move_id from account_invoice 
-						   where type not in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type 
-						   not in ('out_refund', 'in_refund')   and account_move is not null )) end"""
-		
+		if _type_tax_use == 'sale':
+			
+			condition = """AND case when(line.invoice_id) is null then (case when line.name ~ 'IVA' then line.name ~ 'IVA' else line.name ~ 'Refund' end  AND move.id in( select move_id from account_invoice 
+						   where type in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type in 
+						   ('out_refund', 'in_refund')   and account_move is not null )) else (move.id in( select move_id from account_invoice 
+						   where type in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type in 
+						   ('out_refund', 'in_refund')   and account_move is not null )) end """
+						   
+			if not out_refund:
+				condition = """AND case when(line.invoice_id) is null then (not line.name ~ 'Refund' AND move.id in( select move_id from account_invoice 
+							   where type not in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type 
+							   not in ('out_refund', 'in_refund')   and account_move is not null )) else (move.id in( select move_id from account_invoice 
+							   where type not in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type 
+							   not in ('out_refund', 'in_refund')   and account_move is not null)) end"""
+		else:
+			condition = """AND case when(line.invoice_id) is null then (case when line.name ~ 'IVA' then line.name ~ 'IVA' else line.name ~ 'Refund' end  AND move.id in( select move_id from account_invoice 
+						   where type in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type in 
+						   ('out_refund', 'in_refund')   and account_move is not null )) else (move.id in( select move_id from account_invoice 
+						   where type in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move from pos_order where type in 
+						   ('out_refund', 'in_refund')   and account_move is not null )) end """
+						   
+			if not out_refund:
+				condition = """AND case when(line.invoice_id) is null then (not line.name ~ 'Refund' AND move.id in( select move_id from account_invoice 
+							   where type not in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move_id from hr_expense where account_move_id is not null )) 
+							   else (move.id in( select move_id from account_invoice 
+							   where type not in ('out_refund', 'in_refund')  and move_id is not null UNION select account_move_id from hr_expense where account_move_id is not null)) end"""
 		
 		start_date = data['date_from']
 		end_date = data['date_to']
@@ -320,9 +353,7 @@ class ReportTax(models.AbstractModel):
 		_sum_condition = self.sum_condition( tax_ids, out_refund )
 		#line.base_tax
 		if start_date and end_date:
-
-
-
+			
 			self._cr.execute("""SELECT  \
 				SUM(""" + _sum_condition + """)   * """+ str(report_sign) +""" AS tax_amount ,\
 				(select ( ( 
@@ -352,13 +383,10 @@ class ReportTax(models.AbstractModel):
 				AND move.state in %s \
 				"""+ condition + """
 
-
-
 			GROUP BY \
 				line.id, line.tax_line_id, move.id\
 			ORDER BY line.id ASC    
-			""", (tuple(tax_ids),
-				company_id, start_date, end_date, state))
+			""", (tuple(tax_ids),company_id, start_date, end_date, state))
 			 
 		else:
 
@@ -390,10 +418,11 @@ class ReportTax(models.AbstractModel):
 				"""+ condition + """
 			GROUP BY \
 				line.id, line.tax_line_id, move.id\
-			""", (tuple(tax_ids),
-				company_id, state))
+			""", (tuple(tax_ids),company_id, state))
 			
 		result = self._cr.dictfetchall()
+
+
 
 		pos_order_model = self.env['pos.order']
 		pos = 0
@@ -424,12 +453,7 @@ class ReportTax(models.AbstractModel):
 				})
 
 			pos += 1
-
-
-
-
-
-
+		_logger.info(result)	
 		return result
 
 	def _compute_report_balance(self, reports, data, _out_refund = True, report_sign = False, _res = {}, _res_detail = {}):
