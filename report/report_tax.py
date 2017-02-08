@@ -110,9 +110,18 @@ class ReportTax(models.AbstractModel):
 
 			result3 = self.env.cr.dictfetchall()
 
+			self.env.cr.execute("""
+			select et.tax_id, sum(hr.untaxed_amount) * """+ str(report_sign) +""" base_amount from hr_expense hr, expense_tax et
+			where hr.id = et.expense_id
+			and hr.account_move_id in ( select am.id from account_move am where am.date >= %s and am.date <= %s and am.state in %s  )
+			group by et.tax_id
+			""", ( start_date, end_date, state  ) )
+
+			result7 = self.env.cr.dictfetchall()
+
 			
 
-			result4 = result2 + result3
+			result4 = result2 + result3 + result7
 
 			result5 = {}
 			for tax in result4:
@@ -136,8 +145,11 @@ class ReportTax(models.AbstractModel):
 
 			result = result + result6
 
+
+			
 		else:
 			pass
+
 		_logger.info('pruebaaaaaaa')
 		_logger.info(result)	
 		return result
@@ -209,8 +221,8 @@ class ReportTax(models.AbstractModel):
 		#get the base amount for taxes
 		base_amt_val = self._compute_base_amount_bal(tax_ids, data, company_id, out_refund, report_sign)
 		
-		_logger.info('base_amt')
-		_logger.info(base_amt_val)
+		#_logger.info('base_amt')
+		#_logger.info(base_amt_val)
 		
 		start_date = data['date_from']
 		end_date = data['date_to']
@@ -302,8 +314,8 @@ class ReportTax(models.AbstractModel):
 					if r['tax_id'] not in res:
 						res[r['tax_id']] =  {'id': r['tax_id'], 'tax_amount': r['tax_amount'], 'base_amount':base_amt['base_amount']}
 
-		_logger.info(result)
-		_logger.info(res)				
+		#_logger.info(result)
+		#_logger.info(res)				
 		return res
 
 
@@ -425,6 +437,8 @@ class ReportTax(models.AbstractModel):
 
 
 		pos_order_model = self.env['pos.order']
+		hr_expense_model = self.env['hr.expense']	
+
 		pos = 0
 		for res in result:
 
@@ -435,13 +449,18 @@ class ReportTax(models.AbstractModel):
 			pos_order_ids = pos_order_model.search([('partner_id', '=', res.get('partner_id')),('account_move', '=', res.get('move_id')),
 				('type', 'in', _type)])
 			subtotal = 0
+
 			if pos_order_ids:
 				subtotal = 0
 				for order in pos_order_ids:
 					for line in order.lines:
 						subtotal += line.price_subtotal
 
-			
+			hr_expense_ids = hr_expense_model.search([('account_move_id', '=', res.get('move_id'))])
+			if hr_expense_ids:
+				for hr_expense in hr_expense_ids:
+					subtotal += hr_expense.untaxed_amount
+
 			#_logger.info( subtotal )	
 
 			base_amount = result[ pos ].get('base_amount', 0)
@@ -453,7 +472,12 @@ class ReportTax(models.AbstractModel):
 				})
 
 			pos += 1
+
+
+
+		_logger.info("result 2")
 		_logger.info(result)	
+
 		return result
 
 	def _compute_report_balance(self, reports, data, _out_refund = True, report_sign = False, _res = {}, _res_detail = {}):
