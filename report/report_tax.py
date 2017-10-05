@@ -13,20 +13,27 @@ class ReportTax(models.AbstractModel):
 	_inherit = 'report.account_tax_report.report_tax_view'
 	#get the base amount as per tax from account move line
 	def _compute_base_amount_bal(self, tax_ids, data, company_id, out_refund = False, report_sign = False):
+
+		_logger.info("en el metodo")
+		_logger.info( "_compute_base_amount_bal" )
+
 		res = {}
 		iva = False
-	   	_tax_in_invoice = self.tax_in_invoice( tax_ids )
-	   	if not _tax_in_invoice:
-	   		iva = True
+		_tax_in_invoice = self.tax_in_invoice( tax_ids )
+		if not _tax_in_invoice:
+			iva = True
 
 		start_date = data['date_from']
 		end_date = data['date_to']
 		status = data['target_move']
 		if status == 'all':
-			state = ('draft', 'posted', 'paid')
+			state = "'draft','posted','paid'"
 		else:
-			state = ('posted', )
+			state = ("'posted'" )
 		_sum_condition = self.sum_condition( tax_ids, out_refund, 'total' )
+
+		_logger.info("sum conditionnn")
+		_logger.info( "_sum_condition" )
 		
 		if start_date and end_date:            
 
@@ -47,7 +54,7 @@ class ReportTax(models.AbstractModel):
 						AND move.id = move_line.move_id \
 						AND move_rel.account_tax_id in %s \
 						AND move_line.company_id = %s \
-						AND move.state in %s \
+						AND move.state in (%s) \
 					GROUP BY \
 						move_rel.account_tax_id \
 						""", ( start_date, end_date, tuple(tax_ids), company_id, state))
@@ -69,7 +76,7 @@ class ReportTax(models.AbstractModel):
 						move_rel.account_tax_id in %s \
 						AND move_line.company_id = %s \
 						AND move.id = move_line.move_id \
-						AND move.state in %s \
+						AND move.state in (%s) \
 					GROUP BY \
 						move_rel.account_tax_id \
 						""", (tuple(tax_ids), company_id, state))
@@ -82,44 +89,55 @@ class ReportTax(models.AbstractModel):
 			condition_refund = "and type not in ('out_refund', 'in_refund')"
 
 
-		if start_date and end_date:  
+		if start_date and end_date: 
+
+
+
+			sql = 'select polct.tax_id, sum(pol.price_subtotal_line) * %s as base_amount '\
+			'from pos_order po, pos_order_line pol, pos_order_line_company_tax polct '\
+			'where po.id = pol.order_id and polct.order_id = po.id 	and polct.tax_id  in( select id from account_tax where tax_in_invoice = true ) '\
+			'and po.account_move in ( select am.id from account_move am where am.date >= \'%s\' and am.date <= \'%s\' and am.state in (%s)  ) %s '\
+			'group by polct.tax_id ' % ( str(report_sign), start_date, end_date, state, condition_refund )
+
+			_logger.info("sql ejecutar")
+			_logger.info( sql )
 			# Tax in invoice - Pos order
-			self.env.cr.execute( """
-			select polct.tax_id, sum(pol.price_subtotal_line) * """+ str(report_sign) +""" as base_amount
-			from pos_order po, pos_order_line pol, pos_order_line_company_tax polct
-			where 
-			po.id = pol.order_id
-			and polct.order_id = po.id
-			and polct.tax_id  in( select id from account_tax where tax_in_invoice = true )
-			and po.account_move in ( select am.id from account_move am where am.date >= %s and am.date <= %s and am.state in %s """ + condition_refund +  """  )
-			group by polct.tax_id
-			""", ( start_date, end_date, state  ) )
+			self.env.cr.execute( sql )
+
+			_logger.info("finalizado")
+
 
 			result2 = self.env.cr.dictfetchall()
 
+			_logger.info("sql 2")
+			_logger.info( result2 )
+
 			# Tax in invoice - Invoice
 			self.env.cr.execute("""
-			select ait.tax_id, sum(ail.price_subtotal) * """+ str(report_sign) +""" as base_amount
+			select ait.tax_id, sum(ail.price_subtotal) * %s as base_amount
 			from account_invoice ai, account_invoice_line ail, account_invoice_tax ait
 			where 
 			ai.id = ail.invoice_id
 			and ait.invoice_id = ai.id
-			and ai.move_id in ( select am.id from account_move am where am.date >= %s and am.date <= %s and am.state in %s """ + condition_refund +  """  )
+			and ai.move_id in ( select am.id from account_move am where am.date >= \'%s\' and am.date <= \'%s\' and am.state in (%s)   ) %s
 			group by ait.tax_id
-			""", ( start_date, end_date, state  ) )
+			""" % ( str(report_sign), start_date, end_date, state, condition_refund   ) )
 
 			result3 = self.env.cr.dictfetchall()
 
+
+			_logger.info("sql 3")
+
 			self.env.cr.execute("""
-			select et.tax_id, sum(hr.untaxed_amount) * """+ str(report_sign) +""" base_amount from hr_expense hr, expense_tax et
+			select et.tax_id, sum(hr.untaxed_amount) * %s base_amount from hr_expense hr, expense_tax et
 			where hr.id = et.expense_id
-			and hr.account_move_id in ( select am.id from account_move am where am.date >= %s and am.date <= %s and am.state in %s  )
+			and hr.account_move_id in ( select am.id from account_move am where am.date >= \'%s\' and am.date <= \'%s\' and am.state in (%s)  )
 			group by et.tax_id
-			""", ( start_date, end_date, state  ) )
+			""" % ( str(report_sign), start_date, end_date, state  ) )
 
 			result7 = self.env.cr.dictfetchall()
 
-			
+			_logger.info("final de sqls")
 
 			result4 = result2 + result3 + result7
 
@@ -184,9 +202,9 @@ class ReportTax(models.AbstractModel):
 	def sum_condition(self, tax_ids, out_refund, use = 'detail'):
 
 		_type_tax_use = self.type_tax_use( tax_ids )
-	   	_tax_in_invoice = self.tax_in_invoice( tax_ids )
-	   	_dont_impact_balance = self.not_impact_balance( tax_ids )
-	   	
+		_tax_in_invoice = self.tax_in_invoice( tax_ids )
+		_dont_impact_balance = self.not_impact_balance( tax_ids )
+		
 		sum_condition = False
 
 		if not out_refund:
@@ -218,8 +236,14 @@ class ReportTax(models.AbstractModel):
 		res = {}
 		
 
+		_logger.info("pasando a")
+		_logger.info( "_compute_base_amount_bal" )
+
 		#get the base amount for taxes
 		base_amt_val = self._compute_base_amount_bal(tax_ids, data, company_id, out_refund, report_sign)
+
+		_logger.info("pasa")
+		_logger.info( "base_amt_val" )
 		
 		#_logger.info('base_amt')
 		#_logger.info(base_amt_val)
@@ -236,6 +260,8 @@ class ReportTax(models.AbstractModel):
 		_sum_condition = self.sum_condition( tax_ids, out_refund )
 
 		_type_tax_use = self.type_tax_use( tax_ids )
+
+		_logger.info("type tax use")
 
 		if _type_tax_use == 'sale':
 
@@ -358,23 +384,30 @@ class ReportTax(models.AbstractModel):
 		end_date = data['date_to']
 		status = data['target_move']
 		if status == 'all':
-			state = ('draft', 'posted', 'paid' )
+			state = "'draft','posted','paid'"
 		else:
-			state = ('posted', )
+			state = ("'posted'", )
 
 		_sum_condition = self.sum_condition( tax_ids, out_refund )
+
+		_logger.info("Antes de ejecutar")
+
 		#line.base_tax
 		if start_date and end_date:
-			
-			self._cr.execute("""SELECT  \
-				SUM(""" + _sum_condition + """)   * """+ str(report_sign) +""" AS tax_amount ,\
+
+			_logger.info("Ejecutando complicados ................")
+			_logger.info( _sum_condition )
+			_logger.info( tax_ids  )
+
+			sql = """SELECT 
+				SUM(%s)   * %s AS tax_amount ,
 				(select ( ( 
 					case when (select amount_untaxed from account_invoice where id = line.invoice_id) is null 
 					then 0 
 					else (select amount_untaxed from account_invoice where id = line.invoice_id) end ) +
 					(case when 
 						(select amount_untaxed from account_invoice where id = line.invoice_id) is null                         
-						then 0 else 0 end ))) * """+ str(report_sign) +""" as base_amount,
+						then 0 else 0 end ))) * %s as base_amount,
 				move.id as move_id,
 				line.id as id ,\
 				line.partner_id as partner_id ,\
@@ -386,19 +419,26 @@ class ReportTax(models.AbstractModel):
 			FROM account_move_line AS line, \
 				account_move AS move \
 			WHERE \
-				line.tax_line_id in %s  \
-				AND """ + _sum_condition + """ > 0
+				line.tax_line_id in (%s)  \
+				AND %s > 0
 				AND line.company_id = %s \
 				AND move.id = line.move_id \
-				AND line.date >=  %s \
-				AND line.date <=  %s \
-				AND move.state in %s \
-				"""+ condition + """
+				AND line.date >=  \'%s\' \
+				AND line.date <=  \'%s\' \
+				AND move.state in (%s) \
+				%s
 
 			GROUP BY \
 				line.id, line.tax_line_id, move.id\
 			ORDER BY line.id ASC    
-			""", (tuple(tax_ids),company_id, start_date, end_date, state))
+			""" % (  _sum_condition, str(report_sign),  str(report_sign),  ','.join((map( str, tax_ids ))), _sum_condition ,company_id, start_date, end_date, state, condition )
+
+			_logger.info("La sql")
+			_logger.info( sql )
+			
+			self._cr.execute( sql )
+
+			_logger.info("Ejecutado...........")
 			 
 		else:
 
@@ -439,8 +479,13 @@ class ReportTax(models.AbstractModel):
 		pos_order_model = self.env['pos.order']
 		hr_expense_model = self.env['hr.expense']	
 
+		_logger.info("leyendo")
+		_logger.info( len(result) )
+
 		pos = 0
 		for res in result:
+
+			
 
 			_type = ['out_refund', 'in_refund']
 			if not out_refund:
@@ -448,6 +493,7 @@ class ReportTax(models.AbstractModel):
 
 			pos_order_ids = pos_order_model.search([('partner_id', '=', res.get('partner_id')),('account_move', '=', res.get('move_id')),
 				('type', 'in', _type)])
+
 			subtotal = 0
 
 			if pos_order_ids:
@@ -493,6 +539,7 @@ class ReportTax(models.AbstractModel):
 		add_fields = []
 		company_id = self.env.user.company_id.id
 		for report in reports:
+			_logger.info("Entra for report")
 
 			#if _out_refund:
 			out_refund = report.show_refound
@@ -508,6 +555,9 @@ class ReportTax(models.AbstractModel):
 				if report.tax_ids:
 
 					res[report.id]['tax'] = self._compute_tax_balance(report.tax_ids.ids, data, out_refund, report.sign)
+
+					_logger.info("_compute_tax_balance")
+
 				   
 
 					if data['display_detail']:
@@ -567,7 +617,11 @@ class ReportTax(models.AbstractModel):
 
 		return False"""
 
+		_logger.info("Entra 01")
+
 		(res, res_detail) = self.with_context(data.get('used_context'))._compute_report_balance(child_reports, data, out_refund, False, {}, {})
+
+		_logger.info("FINAL")
 
 
 		for report in child_reports:
