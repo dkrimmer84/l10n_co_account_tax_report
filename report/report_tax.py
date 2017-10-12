@@ -386,7 +386,7 @@ class ReportTax(models.AbstractModel):
 		if status == 'all':
 			state = "'draft','posted','paid'"
 		else:
-			state = ("'posted'", )
+			state = "'posted'"
 
 		_sum_condition = self.sum_condition( tax_ids, out_refund )
 
@@ -480,36 +480,51 @@ class ReportTax(models.AbstractModel):
 		hr_expense_model = self.env['hr.expense']	
 
 		_logger.info("leyendo")
-		_logger.info( len(result) )
+		_logger.info( result )
 
 		pos = 0
+
+		_type2 = "'out_refund', 'in_refund'"
+		if not out_refund:
+			_type2 = "'out_invoice', 'in_invoice'"
+
 		for res in result:
 
 			
-
-			_type = ['out_refund', 'in_refund']
-			if not out_refund:
-				_type = ['out_invoice', 'in_invoice']
-
-			pos_order_ids = pos_order_model.search([('partner_id', '=', res.get('partner_id')),('account_move', '=', res.get('move_id')),
-				('type', 'in', _type)])
-
+			
 			subtotal = 0
+			sql = """
+			select sum(pol.price_subtotal_line) as total from 
+			pos_order_line pol,pos_order po
+			where
+			po.id = pol.order_id and po.partner_id %s and po.account_move = %s and po.type in (%s)
 
-			if pos_order_ids:
-				subtotal = 0
-				for order in pos_order_ids:
-					for line in order.lines:
-						subtotal += line.price_subtotal
+			"""	% ( (' =' + str(res.get('partner_id'))) if  res.get('partner_id') else 'is null'  ,  res.get('move_id'), _type2 )
 
-			hr_expense_ids = hr_expense_model.search([('account_move_id', '=', res.get('move_id'))])
-			if hr_expense_ids:
-				for hr_expense in hr_expense_ids:
-					subtotal += hr_expense.untaxed_amount
+			self.env.cr.execute( sql )
+			pos_orders_sql = self.env.cr.dictfetchall(  )
 
-			#_logger.info( subtotal )	
+			if pos_orders_sql:
+				subtotal = pos_orders_sql[ 0 ].get('total')
+				
+
+
+			sql = """
+			select sum(untaxed_amount) as total from hr_expense
+			where account_move_id = %s
+			""" % ( res.get('move_id') )
+
+			self.env.cr.execute( sql )
+			expense_sql = self.env.cr.dictfetchall(  )
+
+
+			if expense_sql:
+				if expense_sql[ 0 ].get('total') != None:
+					subtotal += expense_sql[ 0 ].get('total')
 
 			base_amount = result[ pos ].get('base_amount', 0)
+
+			#_logger.info("Bien 3")	
 			#_logger.info( base_amount )
 
 			if not base_amount:
@@ -518,11 +533,9 @@ class ReportTax(models.AbstractModel):
 				})
 
 			pos += 1
+			
+			
 
-
-
-		_logger.info("result 2")
-		_logger.info(result)	
 
 		return result
 
