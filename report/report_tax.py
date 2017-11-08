@@ -14,8 +14,8 @@ class ReportTax(models.AbstractModel):
 	#get the base amount as per tax from account move line
 	def _compute_base_amount_bal(self, tax_ids, data, company_id, out_refund = False, report_sign = False):
 
-		_logger.info("en el metodo")
-		_logger.info( "_compute_base_amount_bal" )
+		#_logger.info("en el metodo")
+		#_logger.info( "_compute_base_amount_bal" )
 
 		res = {}
 		iva = False
@@ -32,8 +32,8 @@ class ReportTax(models.AbstractModel):
 			state = ("'posted'" )
 		_sum_condition = self.sum_condition( tax_ids, out_refund, 'total' )
 
-		_logger.info("sum conditionnn")
-		_logger.info( "_sum_condition" )
+		#_logger.info("sum conditionnn")
+		#_logger.info( "_sum_condition" )
 		
 		if start_date and end_date:            
 
@@ -99,18 +99,18 @@ class ReportTax(models.AbstractModel):
 			'and po.account_move in ( select am.id from account_move am where am.date >= \'%s\' and am.date <= \'%s\' and am.state in (%s)  ) %s '\
 			'group by polct.tax_id ' % ( str(report_sign), start_date, end_date, state, condition_refund )
 
-			_logger.info("sql ejecutar")
-			_logger.info( sql )
+			#_logger.info("sql ejecutar")
+			#_logger.info( sql )
 			# Tax in invoice - Pos order
 			self.env.cr.execute( sql )
 
-			_logger.info("finalizado")
+			#_logger.info("finalizado")
 
 
 			result2 = self.env.cr.dictfetchall()
 
-			_logger.info("sql 2")
-			_logger.info( result2 )
+			#_logger.info("sql 2")
+			#_logger.info( result2 )
 
 			# Tax in invoice - Invoice
 			self.env.cr.execute("""
@@ -126,7 +126,7 @@ class ReportTax(models.AbstractModel):
 			result3 = self.env.cr.dictfetchall()
 
 
-			_logger.info("sql 3")
+			#_logger.info("sql 3")
 
 			self.env.cr.execute("""
 			select et.tax_id, sum(hr.untaxed_amount) * %s base_amount from hr_expense hr, expense_tax et
@@ -137,7 +137,7 @@ class ReportTax(models.AbstractModel):
 
 			result7 = self.env.cr.dictfetchall()
 
-			_logger.info("final de sqls")
+			#_logger.info("final de sqls")
 
 			result4 = result2 + result3 + result7
 
@@ -168,8 +168,8 @@ class ReportTax(models.AbstractModel):
 		else:
 			pass
 
-		_logger.info('pruebaaaaaaa')
-		_logger.info(result)	
+		#_logger.info('pruebaaaaaaa')
+		#_logger.info(result)	
 		return result
 
 
@@ -236,14 +236,14 @@ class ReportTax(models.AbstractModel):
 		res = {}
 		
 
-		_logger.info("pasando a")
-		_logger.info( "_compute_base_amount_bal" )
+		#_logger.info("pasando a")
+		#_logger.info( "_compute_base_amount_bal" )
 
 		#get the base amount for taxes
 		base_amt_val = self._compute_base_amount_bal(tax_ids, data, company_id, out_refund, report_sign)
 
-		_logger.info("pasa")
-		_logger.info( "base_amt_val" )
+		#_logger.info("pasa")
+		#_logger.info( "base_amt_val" )
 		
 		#_logger.info('base_amt')
 		#_logger.info(base_amt_val)
@@ -261,7 +261,7 @@ class ReportTax(models.AbstractModel):
 
 		_type_tax_use = self.type_tax_use( tax_ids )
 
-		_logger.info("type tax use")
+		#_logger.info("type tax use")
 
 		if _type_tax_use == 'sale':
 
@@ -390,14 +390,14 @@ class ReportTax(models.AbstractModel):
 
 		_sum_condition = self.sum_condition( tax_ids, out_refund )
 
-		_logger.info("Antes de ejecutar")
+		#_logger.info("Antes de ejecutar")
 
 		#line.base_tax
 		if start_date and end_date:
 
-			_logger.info("Ejecutando complicados ................")
-			_logger.info( _sum_condition )
-			_logger.info( tax_ids  )
+			#_logger.info("Ejecutando complicados ................")
+			#_logger.info( _sum_condition )
+			#_logger.info( tax_ids  )
 
 			sql = """SELECT 
 				SUM(%s)   * %s AS tax_amount ,
@@ -433,12 +433,12 @@ class ReportTax(models.AbstractModel):
 			ORDER BY line.id ASC    
 			""" % (  _sum_condition, str(report_sign),  str(report_sign),  ','.join((map( str, tax_ids ))), _sum_condition ,company_id, start_date, end_date, state, condition )
 
-			_logger.info("La sql")
-			_logger.info( sql )
+			#_logger.info("La sql")
+			#_logger.info( sql )
 			
 			self._cr.execute( sql )
 
-			_logger.info("Ejecutado...........")
+			#_logger.info("Ejecutado...........")
 			 
 		else:
 
@@ -479,8 +479,8 @@ class ReportTax(models.AbstractModel):
 		pos_order_model = self.env['pos.order']
 		hr_expense_model = self.env['hr.expense']	
 
-		_logger.info("leyendo")
-		_logger.info( result )
+		#_logger.info("leyendo")
+		#_logger.info( result )
 
 		pos = 0
 
@@ -552,7 +552,7 @@ class ReportTax(models.AbstractModel):
 		add_fields = []
 		company_id = self.env.user.company_id.id
 		for report in reports:
-			_logger.info("Entra for report")
+			#_logger.info("Entra for report")
 
 			#if _out_refund:
 			out_refund = report.show_refound
@@ -569,7 +569,8 @@ class ReportTax(models.AbstractModel):
 
 					res[report.id]['tax'] = self._compute_tax_balance(report.tax_ids.ids, data, out_refund, report.sign)
 
-					_logger.info("_compute_tax_balance")
+					#_logger.info("_compute_tax_balance")
+					#_logger.info( res[report.id]['tax'] )
 
 				   
 
@@ -609,10 +610,17 @@ class ReportTax(models.AbstractModel):
 			elif report.type == 'sum':
 				# it's the sum of the children of this taxes.report
 				#_logger.info("test02")
+				_logger.info("sumando")
+				_logger.info( report )
+				_logger.info( report.children_ids )
+
 				res2,res_detail = self._compute_report_balance(report.children_ids, data, out_refund, report.sign, {}, res_detail)
 				for key, value in res2.items():
 					for field in fields:
 						res[report.id][field] += value[field]
+
+		#_logger.info( res )
+		#_logger.info( res_detail )
 
 		return res,res_detail
 		
@@ -630,11 +638,11 @@ class ReportTax(models.AbstractModel):
 
 		return False"""
 
-		_logger.info("Entra 01")
+		#_logger.info("Entra 01")
 
 		(res, res_detail) = self.with_context(data.get('used_context'))._compute_report_balance(child_reports, data, out_refund, False, {}, {})
 
-		_logger.info("FINAL")
+		#_logger.info("FINAL")
 
 
 		for report in child_reports:
