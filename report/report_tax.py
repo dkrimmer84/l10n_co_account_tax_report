@@ -29,7 +29,7 @@ class ReportTax(models.AbstractModel):
 		if status == 'all':
 			state = "'draft','posted','paid'"
 		else:
-			state = ("'posted'" )
+			state = "'posted'"
 		_sum_condition = self.sum_condition( tax_ids, out_refund, 'total' )
 
 		#_logger.info("sum conditionnn")
@@ -37,7 +37,7 @@ class ReportTax(models.AbstractModel):
 		
 		if start_date and end_date:            
 
-			self._cr.execute("""select \
+			self.env.cr.execute("""select \
 						SUM(""" + _sum_condition + """) * """+ str(report_sign) +""" as base_amount,\
 						move_rel.account_tax_id as tax_id\
 					from \
@@ -49,15 +49,15 @@ class ReportTax(models.AbstractModel):
 						account_move_line_account_tax_rel move_rel ON \
 						(move_rel.account_move_line_id = move_line.id) \
 					where \
-						move_line.date >= %s \
-						AND move_line.date <= %s\
+						move_line.date >= '%s' \
+						AND move_line.date <= '%s'\
 						AND move.id = move_line.move_id \
-						AND move_rel.account_tax_id in %s \
+						AND move_rel.account_tax_id in (%s) \
 						AND move_line.company_id = %s \
 						AND move.state in (%s) \
 					GROUP BY \
 						move_rel.account_tax_id \
-						""", ( start_date, end_date, tuple(tax_ids), company_id, state))
+						""" % ( start_date, end_date, ','.join((map( str, tax_ids ))), company_id, state))
 
 
 		else:
@@ -73,16 +73,19 @@ class ReportTax(models.AbstractModel):
 						account_move_line_account_tax_rel move_rel ON \
 						(move_rel.account_move_line_id = move_line.id) \
 					where \
-						move_rel.account_tax_id in %s \
+						move_rel.account_tax_id in (%s) \
 						AND move_line.company_id = %s \
 						AND move.id = move_line.move_id \
 						AND move.state in (%s) \
 					GROUP BY \
 						move_rel.account_tax_id \
-						""", (tuple(tax_ids), company_id, state))
+						""" % ( ','.join((map( str, tax_ids ))) , company_id, state))
 		
-		result = self._cr.dictfetchall()
+		result = self.env.cr.dictfetchall()
 
+
+		_logger.info("El resultado **")
+		_logger.info( result )
 
 		condition_refund = "and type in ('out_refund', 'in_refund')"
 		if not out_refund:
@@ -99,8 +102,8 @@ class ReportTax(models.AbstractModel):
 			'and po.account_move in ( select am.id from account_move am where am.date >= \'%s\' and am.date <= \'%s\' and am.state in (%s)  ) %s '\
 			'group by polct.tax_id ' % ( str(report_sign), start_date, end_date, state, condition_refund )
 
-			#_logger.info("sql ejecutar")
-			#_logger.info( sql )
+			_logger.info("sql ejecutar")
+			_logger.info( sql )
 			# Tax in invoice - Pos order
 			self.env.cr.execute( sql )
 
@@ -141,11 +144,25 @@ class ReportTax(models.AbstractModel):
 
 			result4 = result2 + result3 + result7
 
+			_logger.info("result")
+			_logger.info( result )
+
+			_logger.info("result 2")
+			_logger.info(result2)
+
+			_logger.info("result 3")
+			_logger.info(result3)
+
+			_logger.info("result 7")
+			_logger.info(result7)
+
 			result5 = {}
 			for tax in result4:
 
 				amount = 0
 				for tax2 in result4:	
+
+
 					if tax2.get('tax_id') == tax.get('tax_id'):
 						amount = amount + tax2.get('base_amount')
 
@@ -168,8 +185,12 @@ class ReportTax(models.AbstractModel):
 		else:
 			pass
 
-		#_logger.info('pruebaaaaaaa')
-		#_logger.info(result)	
+		_logger.info("Result base")
+		_logger.info( tax_ids )
+		_logger.info( result )
+
+
+
 		return result
 
 
@@ -241,6 +262,9 @@ class ReportTax(models.AbstractModel):
 
 		#get the base amount for taxes
 		base_amt_val = self._compute_base_amount_bal(tax_ids, data, company_id, out_refund, report_sign)
+
+		_logger.info("verificando")
+		_logger.info( base_amt_val )
 
 		#_logger.info("pasa")
 		#_logger.info( "base_amt_val" )
@@ -564,11 +588,16 @@ class ReportTax(models.AbstractModel):
 			report_id = str(report.id)
 
 			if report.type == 'taxes':
+				_logger.info("Report type taxes")
+				_logger.info( report.tax_ids.ids )
+
 				# it's the sum of the linked taxes
 				if report.tax_ids:
 
 					res[report.id]['tax'] = self._compute_tax_balance(report.tax_ids.ids, data, out_refund, report.sign)
 
+					_logger.info("el res")
+					_logger.info( res )
 					#_logger.info("_compute_tax_balance")
 					#_logger.info( res[report.id]['tax'] )
 
