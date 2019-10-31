@@ -1,3 +1,2 @@
-# -*- coding: utf-8 -*-
-import models
-import report
+from . import models
+from . import report

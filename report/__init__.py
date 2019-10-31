@@ -1,1 +1,1 @@
-import report_tax
+from . import report_tax
